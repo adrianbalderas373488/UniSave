@@ -1,0 +1,184 @@
+/* Archivo: unisave.css. Autor: Equipo UniSave. Materia: V&V del Software.
+   Módulo: Interfaz. Descripción: Tema nocturno y navegación.
+   Fecha: 2026-11-07. Trazabilidad: RIU-01, RIU-02, RIU-03. */
+:root {
+    color-scheme: dark;
+    --fondo: #0b141a;
+    --superficie: #15242a;
+    --campo: #0d1b21;
+    --borde: #384d53;
+    --texto: #f0f7f6;
+    --secundario: #b7cccb;
+    --acento: #8be0cb;
+    --oscuro: #102d2b;
+    --alerta: #b92a3e;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+    margin: 0;
+    min-height: 100dvh;
+    color: var(--texto);
+    background: var(--fondo);
+    font: 1rem/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.contenedor {
+    max-width: 32rem;
+    margin-inline: auto;
+    padding: calc(1.2rem + env(safe-area-inset-top)) 1.1rem
+        calc(6.4rem + env(safe-area-inset-bottom));
+}
+.cabecera {
+    display: flex;
+    align-items: center;
+    gap: .85rem;
+    margin: .25rem 0 1.5rem;
+}
+.sello {
+    display: grid;
+    place-items: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: .9rem;
+    background: #153832;
+    color: var(--acento);
+}
+.sello svg, .barra-inferior svg {
+    width: 1.45rem;
+    height: 1.45rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+h1, h2, h3, p { margin-top: 0; }
+h1 { margin-bottom: 0; font-size: 1.6rem; line-height: 1.14; letter-spacing: -.035em; }
+h2 { margin-bottom: .65rem; font-size: 1.3rem; line-height: 1.25; }
+h3 { overflow-wrap: anywhere; }
+p { margin-bottom: .7rem; overflow-wrap: anywhere; }
+.introduccion, .nota, .emergencia > p { color: var(--secundario); }
+.introduccion { margin: .2rem 0 0; font-size: .9rem; }
+.nota { font-size: .82rem; text-align: center; }
+section, .acceso {
+    margin: 0 0 1rem;
+    padding: 1.1rem;
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: 1.25rem;
+}
+.sobrelinea {
+    color: var(--acento);
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    margin-bottom: .45rem;
+}
+label { display: block; margin: .75rem 0 .35rem; color: var(--secundario); }
+input, button { min-height: 48px; font: inherit; border-radius: .8rem; padding: .65rem .85rem; }
+input {
+    width: 100%;
+    color: var(--texto);
+    background: var(--campo);
+    border: 1px solid #5b7075;
+}
+input::placeholder { color: #9db7b7; opacity: 1; }
+button {
+    color: var(--texto);
+    background: #23383f;
+    border: 1px solid #5b7075;
+    font-weight: 700;
+    margin-top: .6rem;
+    cursor: pointer;
+}
+button.principal {
+    width: 100%;
+    min-height: 52px;
+    color: var(--oscuro);
+    background: var(--acento);
+    border-color: transparent;
+    margin-top: .9rem;
+}
+button:disabled { opacity: .65; cursor: default; }
+:focus-visible { outline: 3px solid #ffd580; outline-offset: 3px; }
+a { color: var(--acento); }
+.contacto, article { padding: .65rem 0; border-bottom: 1px solid var(--borde); }
+.estado {
+    display: inline-block;
+    color: var(--acento);
+    background: #173b35;
+    padding: .3rem .7rem;
+    border-radius: 5rem;
+    font-size: .85rem;
+    font-weight: 700;
+}
+.estado.estado-alerta { color: #ffdce0; background: #542732; }
+.mensaje:empty { display: none; }
+.mensaje {
+    background: #27352d;
+    color: #e8f9c0;
+    padding: .65rem .85rem;
+    border-radius: .8rem;
+}
+.emergencia { text-align: center; border: 0; background: transparent; padding: .5rem 0 0; }
+.emergencia > p { margin: .9rem auto 0; max-width: 25ch; font-size: .9rem; }
+.panico {
+    display: inline-grid;
+    place-items: center;
+    width: 6.25rem;
+    height: 6.25rem;
+    padding: 0;
+    color: #fff;
+    background: var(--alerta);
+    border: 2px solid #ff8390;
+    box-shadow: 0 0 0 6px #48212c;
+    border-radius: 50%;
+    font-size: 1.65rem;
+    letter-spacing: .04em;
+    touch-action: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+}
+.panico:active { background: #9d1830; box-shadow: 0 0 0 8px #763541; }
+.mapa {
+    background:
+        linear-gradient(156deg, #14272cee, #14272cf5),
+        repeating-linear-gradient(18deg, #79b8ae 0 2px, transparent 2px 32px),
+        repeating-linear-gradient(104deg, #79b8ae 0 2px, #273e43 2px 52px);
+}
+.barra-inferior {
+    position: fixed;
+    z-index: 2;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    justify-content: center;
+    gap: .25rem;
+    background: #101f25;
+    border-top: 1px solid var(--borde);
+    padding: .45rem max(.45rem, env(safe-area-inset-left))
+        calc(.45rem + env(safe-area-inset-bottom)) max(.45rem, env(safe-area-inset-right));
+}
+.barra-inferior button {
+    flex: 1 1 0;
+    max-width: 7.6rem;
+    min-height: 54px;
+    display: grid;
+    justify-items: center;
+    align-content: center;
+    gap: .15rem;
+    padding: .25rem;
+    margin: 0;
+    border: 1px solid transparent;
+    color: var(--secundario);
+    background: transparent;
+    font-size: .78rem;
+}
+.barra-inferior button[aria-current="page"] {
+    color: var(--acento);
+    background: #193932;
+    border-color: #477d73;
+}
+#blazor-error-ui { display: none; padding: 1rem; color: #fff; background: #542732; }

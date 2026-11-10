@@ -1,0 +1,196 @@
+@*
+Archivo: Inicio.razor
+Autor: Equipo UniSave (implementación asistida por Codex)
+Materia: Verificación y Validación del Software
+Módulo: Inicio
+Descripción: Acceso, alertas, trayectos y contactos.
+Fecha: 2026-11-07
+Trazabilidad: CU-01 a CU-07.
+*@
+@page "/"
+@using UniSave.Dominio
+@inject CuentaCliente Cuentas
+
+<header class="cabecera">
+    <span class="sello" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 3 4 6v5c0 5 3 8 8 10 5-2 8-5 8-10V6Z"/>
+            <path d="m8.5 12 2.5 2.5 4.5-5"/></svg>
+    </span>
+    <div><h1>UniSave</h1><p class="introduccion">Tu traslado, acompañado</p></div>
+</header>
+<p role="status" class="mensaje">@_mensaje</p>
+@if (_correoActivo is null)
+{
+    <form class="tarjeta acceso" @onsubmit="AccederAsync" @onsubmit:preventDefault>
+        <h2>@(_crear ? "Crear cuenta" : "Iniciar sesión")</h2>
+        <label for="correo">Correo electrónico</label>
+        <input id="correo" type="email" required @bind="_correo" @bind:event="oninput" />
+        @if (Correo.EsInstitucional(_correo))
+        {
+            <p>Correo institucional UABC detectado.</p>
+        }
+        <label for="clave">Contraseña</label>
+        <input id="clave" type="password" required @bind="_clave" @bind:event="oninput" />
+        @if (_crear)
+        {
+            <p>Usa al menos 12 caracteres.</p>
+        }
+        <button type="submit" class="principal" disabled="@_ocupado">@(_crear ? "Registrarme" : "Entrar")</button>
+        <button type="button" disabled="@_ocupado" @onclick="() => _crear = !_crear">
+            @(_crear ? "Ya tengo cuenta" : "Crear cuenta")
+        </button>
+    </form>
+}
+else
+{
+    <div class="vista" hidden="@(_vista != "Inicio")">
+        <section class="tarjeta viaje">
+        <p class="sobrelinea">Tu trayecto</p>
+        @if (_estado.Trayecto is null)
+        {
+            <h2>Iniciar un viaje</h2>
+            <label for="destino">Destino (opcional)</label>
+            <input id="destino" placeholder="¿A dónde vas?" maxlength="160"
+                @bind="_destino" @bind:event="oninput" />
+            <button type="button" class="principal" disabled="@_ocupado" @onclick="IniciarTrayectoAsync">
+                Iniciar viaje
+            </button>
+        }
+        else
+        {
+            <p class="estado">● Viaje en curso</p>
+                <h2>@(_estado.Trayecto.Destino ?? "Destino sin especificar")</h2>
+            <button type="button" class="principal" disabled="@_ocupado" @onclick="FinalizarTrayectoAsync">
+                Ya llegué
+            </button>
+        }
+    </section>
+        <section class="emergencia" aria-label="Alerta de emergencia">
+        @if (_estado.Alerta is null)
+        {
+            <button type="button" class="panico" aria-label="SOS: mantén 2 segundos" disabled="@_ocupado"
+                @onpointerdown="PresionarAsync" @onpointerup="CancelarPulsacion"
+                @onpointerleave="CancelarPulsacion" @onpointercancel="CancelarPulsacion"
+                @onkeydown="PresionarTeclaAsync" @onkeyup="SoltarTecla"
+                @onblur="CancelarPulsacion" @oncontextmenu:preventDefault>
+                SOS
+            </button>
+            <p>Mantén presionado 2 segundos para activar la alerta.</p>
+        }
+        else
+        {
+            <p class="estado estado-alerta">● Alerta activa</p>
+            <button type="button" disabled="@_ocupado" @onclick="FinalizarAlertaAsync">
+                Finalizar alerta
+            </button>
+        }
+    </section>
+    @if (_estado.Alerta is not null || _estado.Trayecto is not null)
+    {
+        <section>
+            <h2>Avisos a contactos</h2>
+            <p>Revisa y envía el mensaje desde la app de SMS.</p>
+            @foreach (var contacto in _estado.Contactos)
+            {
+                <button type="button" disabled="@_ocupado"
+                    @onclick="() => PrepararSmsAsync(contacto)">
+                    Preparar SMS para @contacto.Nombre
+                </button>
+            }
+        </section>
+    }
+    </div>
+    <div class="vista" hidden="@(_vista != "Mapa")">
+        <section class="tarjeta mapa">
+        <h2>Mi ubicación</h2>
+        <button type="button" disabled="@_ocupado" @onclick="ConsultarUbicacionAsync">
+            Consultar ubicación
+        </button>
+        @if (_ubicacion is not null)
+        {
+            <p>@_ubicacion.Latitude.ToString("F5"), @_ubicacion.Longitude.ToString("F5")
+                · @_ubicacion.Timestamp.ToLocalTime().ToString("g")</p>
+            <button type="button" disabled="@_ocupado" @onclick="AbrirMapaAsync">
+                Abrir en la app de mapas
+            </button>
+        }
+    </section>
+    </div>
+    <div class="vista" hidden="@(_vista != "Contactos")">
+        <section>
+        <h2>Contactos de confianza</h2>
+        @foreach (var contacto in _estado.Contactos)
+        {
+            <div class="contacto" @key="contacto.Id">
+                <strong>@contacto.Nombre</strong> <span>@contacto.Telefono</span>
+                <button type="button" disabled="@_ocupado" @onclick="() => Editar(contacto)">
+                    Editar
+                </button>
+                <button type="button" disabled="@_ocupado"
+                    @onclick="() => SubirAsync(contacto.Id)">
+                    Subir prioridad
+                </button>
+            </div>
+        }
+        <form @onsubmit="GuardarContactoAsync" @onsubmit:preventDefault>
+            <label for="nombreContacto">Nombre</label>
+            <input id="nombreContacto" required @bind="_nombreContacto" />
+            <label for="telefonoContacto">Teléfono con código de país</label>
+            <input id="telefonoContacto" type="tel" required @bind="_telefonoContacto" />
+            <button type="submit" disabled="@_ocupado">Guardar contacto</button>
+            @if (_contactoEditado.HasValue)
+            {
+                <button type="button" @onclick="LimpiarContacto">Cancelar edición</button>
+            }
+        </form>
+    </section>
+    </div>
+    <div class="vista" hidden="@(_vista != "Perfil")">
+        <section class="tarjeta">
+            <p class="sobrelinea">Cuenta</p>
+            <h2>Perfil</h2>
+            <p>@_correoActivo</p>
+            <p>@(Correo.EsInstitucional(_correoActivo) ? "Correo institucional UABC" : "Correo personal")</p>
+            <button type="button" disabled="@_ocupado" @onclick="Salir">Cerrar sesión</button>
+        </section>
+        <section>
+        <h2>Consentimiento de ubicación</h2>
+        <p>UniSave acompaña tu trayecto. En una alerta o trayecto activo puedes compartir
+            tu ubicación con contactos de confianza. Puedes retirar tu consentimiento
+            en cualquier momento. UniSave es un apoyo complementario a los servicios de emergencia.</p>
+        <button type="button" disabled="@_ocupado" @onclick="CambiarConsentimientoAsync">
+            @(_estado.Consentimiento.HasValue ? "Retirar consentimiento" : "Aceptar y activar")
+        </button>
+    </section>
+    </div>
+    <nav class="barra-inferior" aria-label="Navegación principal">
+        <button type="button" aria-current="@(_vista == "Inicio" ? "page" : null)"
+            @onclick='() => _vista = "Inicio"'>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m3 11 9-8 9 8v9a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>
+            </svg>
+            <span>Inicio</span>
+        </button>
+        <button type="button" aria-current="@(_vista == "Mapa" ? "page" : null)"
+            @onclick='() => _vista = "Mapa"'>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M20 10c0 6-8 11-8 11S4 16 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/>
+            </svg>
+            <span>Mapa</span>
+        </button>
+        <button type="button" aria-current="@(_vista == "Contactos" ? "page" : null)"
+            @onclick='() => _vista = "Contactos"'>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="9" cy="8" r="3"/><path d="M3 20v-2a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v2M16 5a3 3 0 0 1 0 6m2 2a5 5 0 0 1 3 5v2"/>
+            </svg>
+            <span>Contactos</span>
+        </button>
+        <button type="button" aria-current="@(_vista == "Perfil" ? "page" : null)"
+            @onclick='() => _vista = "Perfil"'>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="8" r="3.5"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/>
+            </svg>
+            <span>Perfil</span>
+        </button>
+    </nav>
+}

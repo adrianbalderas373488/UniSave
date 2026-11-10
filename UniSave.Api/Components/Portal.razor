@@ -1,0 +1,326 @@
+@*
+Archivo: Portal.razor. Autor: Equipo UniSave. Materia: V&V del Software.
+Módulo: Seguimiento. Descripción: Invitaciones y actividad compartida.
+Fecha: 2026-11-07. Trazabilidad: CU-01, CU-02, CU-04, CU-06, CU-07.
+*@
+@page "/"
+@using UniSave.Dominio
+@using Microsoft.AspNetCore.Components.Web
+
+<header class="cabecera">
+    <span class="sello" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 3 4 6v5c0 5 3 8 8 10 5-2 8-5 8-10V6Z"/>
+            <path d="m8.5 12 2.5 2.5 4.5-5"/></svg>
+    </span>
+    <div><h1>UniSave</h1><p class="introduccion">Tu traslado, acompañado</p></div>
+    @if (_cuenta is not null)
+    {
+        <button type="button" class="campana" aria-label="Notificaciones"
+            aria-current="@(_vista == "Notificaciones" ? "page" : null)"
+            @onclick='() => _vista = "Notificaciones"'>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9m-8 12h4"/>
+            </svg>
+            @if (SinLeer > 0)
+            {
+                <span class="contador" aria-label="Sin leer">@SinLeer</span>
+            }
+        </button>
+    }
+</header>
+<p role="status" class="mensaje">@_mensaje</p>
+@if (_cuenta is null)
+{
+    <form class="tarjeta acceso" @onsubmit="AccederAsync" @onsubmit:preventDefault>
+        <h2>@(_crear ? "Crear cuenta" : "Iniciar sesión")</h2>
+        <label for="correo">Correo electrónico</label>
+        <input id="correo" type="email" required @bind="_correo" @bind:event="oninput" />
+        @if (Correo.EsInstitucional(_correo))
+        {
+            <p>Correo institucional UABC detectado.</p>
+        }
+        <label for="contrasena">Contraseña</label>
+        <input id="contrasena" type="password" required @bind="_clave" @bind:event="oninput"
+            autocomplete="@(_crear ? "new-password" : "current-password")" />
+        @if (_crear)
+        {
+            <p>Usa entre 12 y 128 caracteres.</p>
+        }
+        <button type="submit" class="principal" disabled="@_ocupado">@(_crear ? "Registrarme" : "Entrar")</button>
+        <button type="button" disabled="@_ocupado" @onclick="() => _crear = !_crear">
+            @(_crear ? "Ya tengo cuenta" : "Crear cuenta")
+        </button>
+    </form>
+}
+else
+{
+    @if (_cuenta.EsEstudiante)
+    {
+    <div class="vista" hidden="@(_vista != "Inicio")">
+        <section class="tarjeta viaje">
+            <p class="sobrelinea">Tu trayecto</p>
+            @if (!_trayecto)
+            {
+                <h2>Iniciar un viaje</h2>
+                <label for="destino">Destino (opcional)</label>
+                <input id="destino" placeholder="¿A dónde vas?" maxlength="160"
+                    @bind="_destino" @bind:event="oninput" />
+                <button type="button" class="principal" @onclick="IniciarTrayectoAsync">Iniciar viaje</button>
+            }
+            else
+            {
+                <p class="estado">● Viaje en curso</p>
+                <h2>@(_destinoActivo is { Length: > 0 } ? _destinoActivo : "Destino sin especificar")</h2>
+                <p>Inicio: @_inicioTrayecto?.ToLocalTime().ToString("t")</p>
+                <p>@(Consiente
+                    ? "Contactos vinculados: " + Invitaciones.Count(vinculo => vinculo.Aceptada)
+                    : "El viaje está activo sin compartir ubicación.")</p>
+                <button type="button" class="principal" @onclick="FinalizarTrayecto">Ya llegué</button>
+            }
+        </section>
+        <section class="emergencia" aria-label="Alerta de emergencia">
+            @if (!_alerta)
+            {
+                <button type="button" class="panico" aria-label="SOS: mantén 2 segundos"
+                    @onpointerdown="PresionarAsync" @onpointerup="CancelarPulsacion"
+                    @onpointerleave="CancelarPulsacion" @onpointercancel="CancelarPulsacion"
+                    @onkeydown="PresionarTeclaAsync" @onkeyup="SoltarTecla"
+                    @onblur="CancelarPulsacion" @oncontextmenu:preventDefault>
+                    SOS
+                </button>
+                <p>Mantén presionado 2 segundos para activar la alerta.</p>
+            }
+            else
+            {
+                <p class="estado estado-alerta">● Alerta activa</p>
+                <button type="button" @onclick="FinalizarAlerta">Finalizar alerta</button>
+            }
+        </section>
+        <p class="nota">El envío a autoridades está pendiente.</p>
+    </div>
+    <div class="vista" hidden="@(_vista != "Mapa")">
+        <section class="tarjeta mapa">
+            <p class="sobrelinea">Ubicación</p>
+            <h2>Mi posición</h2>
+            <p>Consulta tu posición actual en este dispositivo.</p>
+            <button type="button" onclick="unisave.mostrarPosicion()">Consultar mi posición</button>
+            <p id="posicion-local" role="status"></p>
+            <a id="mapa-local" target="_blank" rel="noopener noreferrer" hidden>
+                Abrir posición en el mapa
+            </a>
+        </section>
+    </div>
+    <div class="vista" hidden="@(_vista != "Contactos")">
+        <section>
+            <h2>Contactos de confianza</h2>
+            <form @onsubmit="InvitarAsync" @onsubmit:preventDefault>
+                <label for="familiar">Correo personal de un familiar registrado</label>
+                <input id="familiar" type="email" required @bind="_familiar" @bind:event="oninput" />
+                <button type="submit">Invitar familiar</button>
+            </form>
+            @foreach (var invitacion in Invitaciones)
+            {
+                <p>@invitacion.Familiar · @(invitacion.Aceptada ? "Aceptada" : "Pendiente")</p>
+                <button type="button" @onclick="() => Desvincular(invitacion)">
+                    @(invitacion.Aceptada ? "Quitar vínculo" : "Cancelar invitación")
+                </button>
+            }
+        </section>
+    </div>
+    <div class="vista" hidden="@(_vista != "Perfil")">
+        <section class="tarjeta">
+            <p class="sobrelinea">Cuenta</p>
+            <h2>Perfil</h2>
+            <p>@_cuenta.Correo</p>
+            <p>@(_cuenta.EsEstudiante ? "Correo institucional UABC" : "Correo personal")</p>
+            <button type="button" @onclick="Salir">Cerrar sesión</button>
+        </section>
+        <section>
+            <h2>Compartir ubicación</h2>
+            <p>Si aceptas, los familiares vinculados podrán ver tu ubicación durante un
+                trayecto o una alerta activos mientras mantengas abierta esta pantalla.</p>
+            <p class="estado">@(Consiente ? "Consentimiento activo" : "Consentimiento desactivado")</p>
+            <button type="button" @onclick="CambiarConsentimiento">
+                @(Consiente ? "Retirar consentimiento" : "Acepto compartir durante mi actividad")
+            </button>
+        </section>
+    </div>
+    }
+    else
+    {
+    <div class="vista" hidden="@(_vista != "Inicio")">
+        <section aria-live="polite">
+            <p class="sobrelinea">Seguimiento familiar</p>
+            <h2>Actividad compartida</h2>
+            @if (Avisos.Count == 0)
+            {
+                <p>No hay actividad compartida en este momento.</p>
+            }
+            @foreach (var aviso in Avisos)
+            {
+                <article>
+                    <h3>@aviso.Estudiante</h3>
+                    @if (aviso.Alerta)
+                    {
+                        <p><strong>Alerta de emergencia activa</strong></p>
+                    }
+                    @if (aviso.Trayecto)
+                    {
+                        <p class="estado">Viaje en curso</p>
+                        <p>@(string.IsNullOrWhiteSpace(aviso.Destino)
+                            ? "Destino sin especificar" : aviso.Destino)</p>
+                        <p>Inicio: @aviso.Inicio?.ToLocalTime().ToString("t")</p>
+                    }
+                    @if (aviso.Posicion is { } posicion)
+                    {
+                        <p>Ubicación actualizada a las @posicion.Fecha.ToLocalTime().ToString("t")</p>
+                        <a href="@Mapa(posicion)" target="_blank" rel="noopener noreferrer">
+                            Ver ubicación en el mapa
+                        </a>
+                    }
+                    else
+                    {
+                        <p>Ubicación no disponible.</p>
+                    }
+                </article>
+            }
+        </section>
+    </div>
+    <div class="vista" hidden="@(_vista != "Historial")">
+        <section>
+            <p class="sobrelinea">Seguimiento familiar</p>
+            <h2>Historial de trayectos</h2>
+            @if (Historial.Count == 0)
+            {
+                <p>Aquí verás los viajes que tus contactos compartan contigo.</p>
+            }
+            @foreach (var viaje in Historial)
+            {
+                <article class="registro" @key="(viaje.Id, viaje.Familiar)">
+                    <p class="estado">@EstadoDelTrayecto(viaje)</p>
+                    <h3>@(string.IsNullOrWhiteSpace(viaje.Destino)
+                        ? "Destino sin especificar" : viaje.Destino)</h3>
+                    <p class="detalle">@viaje.Estudiante</p>
+                    <dl class="fechas">
+                        <dt>Inicio</dt>
+                        <dd>@viaje.Inicio.ToLocalTime().ToString("g")</dd>
+                        @if (viaje.Fin is { } fin)
+                        {
+                            <dt>@(viaje.LlegadaConfirmada ? "Llegada" : "Fin del seguimiento")</dt>
+                            <dd>@fin.ToLocalTime().ToString("g")</dd>
+                        }
+                    </dl>
+                </article>
+            }
+        </section>
+    </div>
+    <div class="vista" hidden="@(_vista != "Contactos")">
+        <section>
+            <h2>Invitaciones</h2>
+            @if (Invitaciones.Count == 0)
+            {
+                <p>No tienes invitaciones.</p>
+            }
+            @foreach (var invitacion in Invitaciones)
+            {
+                <p>@invitacion.Estudiante · @(invitacion.Aceptada ? "Vinculado" : "Pendiente")</p>
+                @if (!invitacion.Aceptada)
+                {
+                    <button type="button" @onclick="() => Responder(invitacion, true)">
+                        Aceptar invitación
+                    </button>
+                    <button type="button" @onclick="() => Responder(invitacion, false)">
+                        Rechazar invitación
+                    </button>
+                }
+                else
+                {
+                    <button type="button" @onclick="() => Desvincular(invitacion)">
+                        Quitar vínculo
+                    </button>
+                }
+            }
+        </section>
+    </div>
+    <div class="vista" hidden="@(_vista != "Perfil")">
+        <section class="tarjeta">
+            <p class="sobrelinea">Cuenta</p>
+            <h2>Perfil</h2>
+            <p>@_cuenta.Correo</p>
+            <p>@(_cuenta.EsEstudiante ? "Correo institucional UABC" : "Correo personal")</p>
+            <button type="button" @onclick="Salir">Cerrar sesión</button>
+        </section>
+    </div>
+    }
+    <div class="vista" hidden="@(_vista != "Notificaciones")">
+        <section>
+            <p class="sobrelinea">Actividad de tu cuenta</p>
+            <h2>Notificaciones</h2>
+            @if (Notificaciones.Count == 0)
+            {
+                <p>Todavía no tienes notificaciones.</p>
+            }
+            @if (SinLeer > 0)
+            {
+                <button type="button" @onclick="MarcarNotificaciones">Marcar todas como leídas</button>
+            }
+            @foreach (var aviso in Notificaciones)
+            {
+                <article class="registro">
+                    @if (!aviso.Leida)
+                    {
+                        <p class="estado">Sin leer</p>
+                    }
+                    <h3>@Titulo(aviso.Tipo)</h3>
+                    <p class="detalle">@aviso.Contacto</p>
+                    <time datetime="@aviso.Fecha.ToString("O")">
+                        @aviso.Fecha.ToLocalTime().ToString("g")
+                    </time>
+                </article>
+            }
+        </section>
+    </div>
+    <nav class="barra-inferior" aria-label="Navegación principal">
+        <button type="button" aria-current="@(_vista == "Inicio" ? "page" : null)"
+            @onclick='() => _vista = "Inicio"'>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m3 11 9-8 9 8v9a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>
+            </svg>
+            <span>Inicio</span>
+        </button>
+        @if (_cuenta.EsEstudiante)
+        {
+        <button type="button" aria-current="@(_vista == "Mapa" ? "page" : null)"
+            @onclick='() => _vista = "Mapa"'>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M20 10c0 6-8 11-8 11S4 16 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/>
+            </svg>
+            <span>Mapa</span>
+        </button>
+        }
+        else
+        {
+            <button type="button" aria-current="@(_vista == "Historial" ? "page" : null)"
+                @onclick='() => _vista = "Historial"'>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>
+                </svg>
+                <span>Historial</span>
+            </button>
+        }
+        <button type="button" aria-current="@(_vista == "Contactos" ? "page" : null)"
+            @onclick='() => _vista = "Contactos"'>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="9" cy="8" r="3"/><path d="M3 20v-2a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v2M16 5a3 3 0 0 1 0 6m2 2a5 5 0 0 1 3 5v2"/>
+            </svg>
+            <span>Contactos</span>
+        </button>
+        <button type="button" aria-current="@(_vista == "Perfil" ? "page" : null)"
+            @onclick='() => _vista = "Perfil"'>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="8" r="3.5"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/>
+            </svg>
+            <span>Perfil</span>
+        </button>
+    </nav>
+}
