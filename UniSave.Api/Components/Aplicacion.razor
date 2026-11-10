@@ -1,0 +1,24 @@
+@*
+Archivo: Aplicacion.razor. Autor: Equipo UniSave. Materia: V&V del Software.
+Módulo: Seguimiento. Descripción: Invitaciones y actividad compartida.
+Fecha: 2026-11-07. Trazabilidad: CU-01, CU-02, CU-04, CU-06, CU-07.
+*@
+@using Microsoft.AspNetCore.Components.Web
+@using static Microsoft.AspNetCore.Components.Web.RenderMode
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <base href="/" />
+    <title>UniSave</title>
+    <link rel="stylesheet" href="unisave.css" />
+</head>
+<body>
+    <main class="contenedor">
+        <Portal @rendermode="InteractiveServer" />
+    </main>
+    <script src="ubicacion.js"></script>
+    <script src="@Assets["_framework/blazor.web.js"]"></script>
+</body>
+</html>
