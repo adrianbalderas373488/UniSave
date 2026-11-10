@@ -1,5 +1,5 @@
 // Archivo: RepositorioCuentas.cs
-// Autor: Equipo UniSave (implementación asistida por Codex)
+// Autor: Adrian Balderas y Fernanda Itzel
 // Materia: Verificación y Validación del Software
 // Módulo: Cuentas
 // Descripción: Persiste y consulta las cuentas de UniSave.

@@ -1,5 +1,5 @@
 // Archivo: Portal.razor.cs
-// Autor: Equipo UniSave (implementación asistida por Codex)
+// Autor: Adrian Balderas y Fernanda Itzel
 // Materia: Verificación y Validación del Software
 // Módulo: Portal
 // Descripción: Coordina la sesión, invitaciones y el seguimiento.

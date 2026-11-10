@@ -1,5 +1,5 @@
 // Archivo: Program.cs
-// Autor: Equipo UniSave (implementación asistida por Codex)
+// Autor: Adrian Balderas y Fernanda Itzel
 // Materia: Verificación y Validación del Software
 // Módulo: API
 // Descripción: Configura el servidor y los puntos de acceso a cuentas.

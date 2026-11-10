@@ -1,5 +1,5 @@
 // Archivo: Contexto.cs
-// Autor: Equipo UniSave (implementación asistida por Codex)
+// Autor: Adrian Balderas y Fernanda Itzel
 // Materia: Verificación y Validación del Software
 // Módulo: Dominio
 // Descripción: Define el estado local y la regla de publicación.
