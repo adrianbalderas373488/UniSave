@@ -1,5 +1,5 @@
 // Archivo: Correo.cs
-// Autor: Equipo UniSave (implementación asistida por Codex)
+// Autor: Adrian Balderas y Fernanda Itzel
 // Materia: Verificación y Validación del Software
 // Módulo: Dominio
 // Descripción: Valida y clasifica las direcciones de correo.

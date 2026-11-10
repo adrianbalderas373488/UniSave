@@ -1,5 +1,5 @@
 // Archivo: ubicacion.js
-// Autor: Equipo UniSave (implementación asistida por Codex)
+// Autor: Adrian Balderas y Fernanda Itzel
 // Materia: Verificación y Validación del Software
 // Módulo: Ubicación
 // Descripción: Consulta el GPS mediante la API del navegador.

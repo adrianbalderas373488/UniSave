@@ -1,5 +1,5 @@
 // Archivo: Registro.cs
-// Autor: Equipo UniSave (implementación asistida por Codex)
+// Autor: Adrian Balderas y Fernanda Itzel
 // Materia: Verificación y Validación del Software
 // Módulo: Dominio
 // Descripción: Define los datos de registro e inicio de sesión.

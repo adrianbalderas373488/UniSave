@@ -1,5 +1,5 @@
 // Archivo: Inicio.razor.cs
-// Autor: Equipo UniSave (implementación asistida por Codex)
+// Autor: Adrian Balderas y Fernanda Itzel
 // Materia: Verificación y Validación del Software
 // Módulo: Aplicación móvil
 // Descripción: Coordina las operaciones de la aplicación móvil.

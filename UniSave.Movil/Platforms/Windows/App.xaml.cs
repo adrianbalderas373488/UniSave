@@ -1,5 +1,5 @@
 // Archivo: App.xaml.cs
-// Autor: Equipo UniSave (implementación asistida por Codex)
+// Autor: Adrian Balderas y Fernanda Itzel
 // Materia: Verificación y Validación del Software
 // Módulo: Infraestructura
 // Descripción: Configura la estructura de la aplicación.

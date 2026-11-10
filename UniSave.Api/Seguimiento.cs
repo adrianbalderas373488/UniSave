@@ -1,5 +1,5 @@
 // Archivo: Seguimiento.cs
-// Autor: Equipo UniSave (implementación asistida por Codex)
+// Autor: Adrian Balderas y Fernanda Itzel
 // Materia: Verificación y Validación del Software
 // Módulo: Seguimiento
 // Descripción: Gestiona vínculos, consentimiento e historial.

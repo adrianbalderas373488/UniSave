@@ -1,5 +1,5 @@
 // Archivo: CuentaCliente.cs
-// Autor: Equipo UniSave (implementación asistida por Codex)
+// Autor: Adrian Balderas y Fernanda Itzel
 // Materia: Verificación y Validación del Software
 // Módulo: Cuentas
 // Descripción: Conecta el registro y acceso móvil con la API.
