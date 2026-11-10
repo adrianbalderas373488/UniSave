@@ -1,8 +1,13 @@
 @*
-Archivo: Portal.razor. Autor: Equipo UniSave. Materia: V&V del Software.
-Módulo: Seguimiento. Descripción: Invitaciones y actividad compartida.
-Fecha: 2026-11-07. Trazabilidad: CU-01, CU-02, CU-04, CU-06, CU-07.
+Archivo: Portal.razor
+Autor: Equipo UniSave (implementación asistida por Codex)
+Materia: Verificación y Validación del Software
+Módulo: Portal
+Descripción: Presenta el acceso y las vistas de estudiante y familiar.
+Fecha: 2026-11-09
+Trazabilidad: CU-01 a CU-07
 *@
+
 @page "/"
 @using UniSave.Dominio
 @using Microsoft.AspNetCore.Components.Web
@@ -46,7 +51,9 @@ Fecha: 2026-11-07. Trazabilidad: CU-01, CU-02, CU-04, CU-06, CU-07.
         {
             <p>Usa entre 12 y 128 caracteres.</p>
         }
-        <button type="submit" class="principal" disabled="@_ocupado">@(_crear ? "Registrarme" : "Entrar")</button>
+        <button type="submit" class="principal" disabled="@_ocupado">
+            @(_crear ? "Registrarme" : "Entrar")
+        </button>
         <button type="button" disabled="@_ocupado" @onclick="() => _crear = !_crear">
             @(_crear ? "Ya tengo cuenta" : "Crear cuenta")
         </button>
@@ -65,7 +72,9 @@ else
                 <label for="destino">Destino (opcional)</label>
                 <input id="destino" placeholder="¿A dónde vas?" maxlength="160"
                     @bind="_destino" @bind:event="oninput" />
-                <button type="button" class="principal" @onclick="IniciarTrayectoAsync">Iniciar viaje</button>
+                <button type="button" class="principal" @onclick="IniciarTrayectoAsync">
+                    Iniciar viaje
+                </button>
             }
             else
             {
@@ -75,7 +84,9 @@ else
                 <p>@(Consiente
                     ? "Contactos vinculados: " + Invitaciones.Count(vinculo => vinculo.Aceptada)
                     : "El viaje está activo sin compartir ubicación.")</p>
-                <button type="button" class="principal" @onclick="FinalizarTrayecto">Ya llegué</button>
+                <button type="button" class="principal" @onclick="FinalizarTrayecto">
+                    Ya llegué
+                </button>
             }
         </section>
         <section class="emergencia" aria-label="Alerta de emergencia">

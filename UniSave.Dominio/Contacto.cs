@@ -1,9 +1,10 @@
-
+// Archivo: Contacto.cs
+// Autor: Equipo UniSave (implementación asistida por Codex)
 // Materia: Verificación y Validación del Software
 // Módulo: Dominio
-// Descripción: Reglas y contratos de UniSave.
-// Fecha: 2026-11-07
-// Trazabilidad: CU-01, CU-03, CU-06, CU-07
+// Descripción: Representa un contacto de confianza.
+// Fecha: 2026-11-09
+// Trazabilidad: RF-03, CU-03
 
 namespace UniSave.Dominio
 {

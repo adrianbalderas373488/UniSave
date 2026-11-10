@@ -1,6 +1,13 @@
-/* Archivo: unisave.css. Autor: Equipo UniSave. Materia: V&V del Software.
-   Módulo: Interfaz. Descripción: Tema nocturno y navegación.
-   Fecha: 2026-11-07. Trazabilidad: RIU-01, RIU-02, RIU-03. */
+/*
+Archivo: app.css
+Autor: Equipo UniSave (implementación asistida por Codex)
+Materia: Verificación y Validación del Software
+Módulo: Interfaz
+Descripción: Define la presentación o el contenedor de UniSave.
+Fecha: 2026-11-09
+Trazabilidad: RIU-01, RIU-02, RIU-03
+*/
+
 :root {
     color-scheme: dark;
     --fondo: #0b141a;

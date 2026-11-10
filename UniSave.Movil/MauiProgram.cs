@@ -1,9 +1,10 @@
-
+// Archivo: MauiProgram.cs
+// Autor: Equipo UniSave (implementación asistida por Codex)
 // Materia: Verificación y Validación del Software
-// Módulo: Aplicación
-// Descripción: Configura Blazor y el cliente de cuentas.
-// Fecha: 2026-11-07
-// Trazabilidad: CU-01 a CU-07.
+// Módulo: Infraestructura
+// Descripción: Configura la estructura de la aplicación.
+// Fecha: 2026-11-09
+// Trazabilidad: CU-01 a CU-07
 
 namespace UniSave.Movil
 {

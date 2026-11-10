@@ -1,6 +1,11 @@
-// Archivo: ubicacion.js. Autor: Equipo UniSave. Materia: V&V del Software.
-// Módulo: Ubicación. Descripción: Puente de permisos y GPS del navegador.
-// Fecha: 2026-11-07. Trazabilidad: CU-04, CU-06, CU-07.
+// Archivo: ubicacion.js
+// Autor: Equipo UniSave (implementación asistida por Codex)
+// Materia: Verificación y Validación del Software
+// Módulo: Ubicación
+// Descripción: Consulta el GPS mediante la API del navegador.
+// Fecha: 2026-11-09
+// Trazabilidad: CU-04, CU-06, CU-07
+
 window.unisave = {
     async mostrarPosicion() {
         const posicion = await this.posicion(true);

@@ -2,9 +2,9 @@
 // Autor: Equipo UniSave (implementación asistida por Codex)
 // Materia: Verificación y Validación del Software
 // Módulo: Seguimiento
-// Descripción: Vínculos, actividad compartida, notificaciones e historial.
-// Fecha: 2026-11-07
-// Trazabilidad: CU-01, CU-02, CU-06, CU-07.
+// Descripción: Gestiona vínculos, consentimiento e historial.
+// Fecha: 2026-11-09
+// Trazabilidad: CU-02, CU-04, CU-06, CU-07
 
 using System.Text.Json;
 
@@ -70,6 +70,9 @@ namespace UniSave.Api
         }
 
         /// <summary>Guarda el permiso por cuenta y corta el seguimiento al retirarlo.</summary>
+        /// <param name="correo">Correo de la cuenta titular.</param>
+        /// <param name="permitir">Indica si el titular autorizó compartir su ubicación.</param>
+        /// <exception cref="IOException">No se pudo guardar la decisión.</exception>
         public void EstablecerConsentimiento(string correo, bool permitir)
         {
             lock (_acceso)
@@ -191,6 +194,11 @@ namespace UniSave.Api
         }
 
         /// <summary>Actualiza la posición en memoria y registra eventos por destinatario.</summary>
+        /// <param name="sesion">Identificador de la sesión que inició el seguimiento.</param>
+        /// <param name="versionConsentimiento">Versión del permiso del titular.</param>
+        /// <param name="aviso">Estado del trayecto o de la alerta activa.</param>
+        /// <returns>Verdadero si el consentimiento seguía vigente al publicar.</returns>
+        /// <exception cref="IOException">No se pudo guardar el evento por destinatario.</exception>
         public bool Publicar(Guid sesion, Guid versionConsentimiento, Aviso aviso)
         {
             lock (_acceso)
@@ -294,7 +302,8 @@ namespace UniSave.Api
             {
                 DateTimeOffset ahora = DateTimeOffset.UtcNow;
                 foreach (var vencido in _avisos.Where(par =>
-                    ahora - par.Value.Aviso.Actualizado > Vigencia).Select(par => par.Key).ToArray())
+                    ahora - par.Value.Aviso.Actualizado > Vigencia)
+                    .Select(par => par.Key).ToArray())
                 {
                     _avisos.Remove(vencido);
                 }
