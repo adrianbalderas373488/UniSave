@@ -2,9 +2,9 @@
 // Autor: Equipo UniSave (implementación asistida por Codex)
 // Materia: Verificación y Validación del Software
 // Módulo: Portal
-// Descripción: Coordina acceso, invitaciones y publicación durante una actividad.
-// Fecha: 2026-11-07
-// Trazabilidad: CU-01, CU-02, CU-04, CU-06 y CU-07.
+// Descripción: Coordina la sesión, invitaciones y el seguimiento.
+// Fecha: 2026-11-09
+// Trazabilidad: CU-01 a CU-07
 
 using System.Globalization;
 using Microsoft.AspNetCore.Components;

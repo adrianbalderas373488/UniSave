@@ -1,10 +1,10 @@
 // Archivo: Inicio.razor.cs
 // Autor: Equipo UniSave (implementación asistida por Codex)
 // Materia: Verificación y Validación del Software
-// Módulo: Inicio
-// Descripción: Coordina operaciones de la pantalla principal.
-// Fecha: 2026-11-07
-// Trazabilidad: CU-01 a CU-07.
+// Módulo: Aplicación móvil
+// Descripción: Coordina las operaciones de la aplicación móvil.
+// Fecha: 2026-11-09
+// Trazabilidad: CU-01 a CU-07
 
 using System.Globalization;
 using System.Security.Cryptography;

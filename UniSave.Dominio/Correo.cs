@@ -1,9 +1,10 @@
-
+// Archivo: Correo.cs
+// Autor: Equipo UniSave (implementación asistida por Codex)
 // Materia: Verificación y Validación del Software
-// Módulo: Cuentas
-// Descripción: Reglas y contratos de UniSave.
-// Fecha: 2026-11-07
-// Trazabilidad: Precondición de sesión de CU-01 y CU-03
+// Módulo: Dominio
+// Descripción: Valida y clasifica las direcciones de correo.
+// Fecha: 2026-11-09
+// Trazabilidad: Precondición de CU-01 y CU-03
 
 using System.Net.Mail;
 

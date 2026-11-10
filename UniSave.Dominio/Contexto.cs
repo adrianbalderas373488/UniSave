@@ -1,9 +1,10 @@
-
+// Archivo: Contexto.cs
+// Autor: Equipo UniSave (implementación asistida por Codex)
 // Materia: Verificación y Validación del Software
 // Módulo: Dominio
-// Descripción: Reglas y contratos de UniSave.
-// Fecha: 2026-11-07
-// Trazabilidad: CU-01, CU-03, CU-06, CU-07
+// Descripción: Define el estado local y la regla de publicación.
+// Fecha: 2026-11-09
+// Trazabilidad: CU-01, CU-06, CU-07
 
 namespace UniSave.Dominio
 {

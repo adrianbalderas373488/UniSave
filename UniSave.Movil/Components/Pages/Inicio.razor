@@ -2,11 +2,12 @@
 Archivo: Inicio.razor
 Autor: Equipo UniSave (implementación asistida por Codex)
 Materia: Verificación y Validación del Software
-Módulo: Inicio
-Descripción: Acceso, alertas, trayectos y contactos.
-Fecha: 2026-11-07
-Trazabilidad: CU-01 a CU-07.
+Módulo: Aplicación móvil
+Descripción: Presenta las vistas de viaje, contactos y perfil.
+Fecha: 2026-11-09
+Trazabilidad: CU-01 a CU-07
 *@
+
 @page "/"
 @using UniSave.Dominio
 @inject CuentaCliente Cuentas
@@ -35,7 +36,9 @@ Trazabilidad: CU-01 a CU-07.
         {
             <p>Usa al menos 12 caracteres.</p>
         }
-        <button type="submit" class="principal" disabled="@_ocupado">@(_crear ? "Registrarme" : "Entrar")</button>
+        <button type="submit" class="principal" disabled="@_ocupado">
+            @(_crear ? "Registrarme" : "Entrar")
+        </button>
         <button type="button" disabled="@_ocupado" @onclick="() => _crear = !_crear">
             @(_crear ? "Ya tengo cuenta" : "Crear cuenta")
         </button>

@@ -1,9 +1,10 @@
-
+// Archivo: CuentaCliente.cs
+// Autor: Equipo UniSave (implementación asistida por Codex)
 // Materia: Verificación y Validación del Software
 // Módulo: Cuentas
-// Descripción: Registro e inicio de sesión mediante la API.
-// Fecha: 2026-11-07
-// Trazabilidad: Precondiciones de CU-01 y CU-03.
+// Descripción: Conecta el registro y acceso móvil con la API.
+// Fecha: 2026-11-09
+// Trazabilidad: Precondición de CU-01 y CU-03
 
 using System.Net;
 using System.Net.Http.Json;
@@ -17,6 +18,11 @@ namespace UniSave.Movil
         private static readonly Uri? _servidor = LeerServidor();
 
         /// <summary>Registra una cuenta y comprueba sus credenciales contra la API.</summary>
+        /// <param name="registro">Correo, contraseña y clasificación de la cuenta.</param>
+        /// <param name="crear">Indica si se solicita el alta antes del acceso.</param>
+        /// <returns>Token de la sesión iniciada.</returns>
+        /// <exception cref="InvalidOperationException">Acceso inválido o sin configurar.</exception>
+        /// <exception cref="HttpRequestException">La API rechazó o no recibió la petición.</exception>
         public async Task<string> AccederAsync(Registro registro, bool crear)
         {
             Uri servidor = _servidor ?? throw new InvalidOperationException(

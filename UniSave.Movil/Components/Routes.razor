@@ -1,4 +1,14 @@
-﻿<Router AppAssembly="typeof(MauiProgram).Assembly" NotFoundPage="typeof(Pages.NotFound)">
+@*
+Archivo: Routes.razor
+Autor: Equipo UniSave (implementación asistida por Codex)
+Materia: Verificación y Validación del Software
+Módulo: Infraestructura
+Descripción: Configura la estructura de la aplicación.
+Fecha: 2026-11-09
+Trazabilidad: CU-01 a CU-07
+*@
+
+<Router AppAssembly="typeof(MauiProgram).Assembly" NotFoundPage="typeof(Pages.NotFound)">
     <Found Context="routeData">
         <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
         <FocusOnNavigate RouteData="routeData" Selector="h1" />

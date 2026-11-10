@@ -1,9 +1,10 @@
-
+// Archivo: RepositorioCuentas.cs
+// Autor: Equipo UniSave (implementación asistida por Codex)
 // Materia: Verificación y Validación del Software
 // Módulo: Cuentas
-// Descripción: Registro y acceso a cuentas.
-// Fecha: 2026-11-07
-// Trazabilidad: Precondición de sesión de CU-01 y CU-03
+// Descripción: Persiste y consulta las cuentas de UniSave.
+// Fecha: 2026-11-09
+// Trazabilidad: Precondición de CU-01 y CU-03
 
 using System.Text.Json;
 
@@ -19,6 +20,10 @@ namespace UniSave.Api
             entorno.ContentRootPath);
 
         /// <summary>Busca una cuenta por correo normalizado.</summary>
+        /// <param name="correo">Correo normalizado de la cuenta.</param>
+        /// <param name="cancelacion">Señal para cancelar el acceso al archivo.</param>
+        /// <returns>La cuenta registrada o un valor nulo si no existe.</returns>
+        /// <exception cref="IOException">No se pudo leer el archivo de cuentas.</exception>
         public async Task<Cuenta?> BuscarAsync(string correo, CancellationToken cancelacion)
         {
             await _acceso.WaitAsync(cancelacion);
@@ -33,6 +38,10 @@ namespace UniSave.Api
         }
 
         /// <summary>Guarda una cuenta nueva y devuelve falso si ya existe.</summary>
+        /// <param name="cuenta">Cuenta validada con su contraseña resumida.</param>
+        /// <param name="cancelacion">Señal para cancelar la operación.</param>
+        /// <returns>Verdadero si se guardó la cuenta.</returns>
+        /// <exception cref="IOException">No se pudo actualizar el archivo de cuentas.</exception>
         public async Task<bool> AgregarAsync(Cuenta cuenta, CancellationToken cancelacion)
         {
             await _acceso.WaitAsync(cancelacion);

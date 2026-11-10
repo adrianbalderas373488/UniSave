@@ -1,9 +1,10 @@
-
+// Archivo: Program.cs
+// Autor: Equipo UniSave (implementación asistida por Codex)
 // Materia: Verificación y Validación del Software
-// Módulo: Cuentas
-// Descripción: Registro y acceso a cuentas.
-// Fecha: 2026-11-07
-// Trazabilidad: Precondición de sesión de CU-01 y CU-03
+// Módulo: API
+// Descripción: Configura el servidor y los puntos de acceso a cuentas.
+// Fecha: 2026-11-09
+// Trazabilidad: CU-01, CU-03
 
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
