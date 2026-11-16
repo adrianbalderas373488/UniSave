@@ -77,10 +77,12 @@ namespace UniSave.Api.Components
             _actualizaciones = ActualizarAsync(_vida.Token);
         }
 
-        // Programa el redibujado sin esperar: el aviso puede llegar desde otra sesión.
-        private void AlCambiarSeguimiento()
+        // Programa el redibujado sin esperar, y solo si el cambio toca a esta cuenta: con cientos
+        // de vistas abiertas, redibujar todas en cada cambio saturaría el servidor.
+        private void AlCambiarSeguimiento(IReadOnlyCollection<string>? afectados)
         {
-            if (!_vida.IsCancellationRequested)
+            if (!_vida.IsCancellationRequested && _cuenta is { } cuenta &&
+                (afectados is null || afectados.Contains(cuenta.Correo)))
             {
                 _ = RedibujarAsync();
             }

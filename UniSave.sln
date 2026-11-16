@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UniSave.Dominio", "UniSave.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UniSave.Api", "UniSave.Api\UniSave.Api.csproj", "{B0716436-7DD7-4676-B256-FEB8BC3CB84D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UniSave.Pruebas", "UniSave.Pruebas\UniSave.Pruebas.csproj", "{530DF613-CE45-47FE-A403-95D1155DC078}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -55,6 +57,18 @@ Global
 		{B0716436-7DD7-4676-B256-FEB8BC3CB84D}.Release|x64.Build.0 = Release|Any CPU
 		{B0716436-7DD7-4676-B256-FEB8BC3CB84D}.Release|x86.ActiveCfg = Release|Any CPU
 		{B0716436-7DD7-4676-B256-FEB8BC3CB84D}.Release|x86.Build.0 = Release|Any CPU
+		{530DF613-CE45-47FE-A403-95D1155DC078}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{530DF613-CE45-47FE-A403-95D1155DC078}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{530DF613-CE45-47FE-A403-95D1155DC078}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{530DF613-CE45-47FE-A403-95D1155DC078}.Debug|x64.Build.0 = Debug|Any CPU
+		{530DF613-CE45-47FE-A403-95D1155DC078}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{530DF613-CE45-47FE-A403-95D1155DC078}.Debug|x86.Build.0 = Debug|Any CPU
+		{530DF613-CE45-47FE-A403-95D1155DC078}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{530DF613-CE45-47FE-A403-95D1155DC078}.Release|Any CPU.Build.0 = Release|Any CPU
+		{530DF613-CE45-47FE-A403-95D1155DC078}.Release|x64.ActiveCfg = Release|Any CPU
+		{530DF613-CE45-47FE-A403-95D1155DC078}.Release|x64.Build.0 = Release|Any CPU
+		{530DF613-CE45-47FE-A403-95D1155DC078}.Release|x86.ActiveCfg = Release|Any CPU
+		{530DF613-CE45-47FE-A403-95D1155DC078}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

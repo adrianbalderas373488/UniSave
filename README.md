@@ -52,6 +52,23 @@ retirar el consentimiento o vencer la actualización.
   por el último día, 7 o 30 días.
 - **Mis viajes.** El estudiante ve su propio historial, aunque no comparta el viaje.
 
+## Retención de datos
+
+Al cargar y al guardar `seguimiento.json`, UniSave descarta las notificaciones, los viajes y
+los trayectos compartidos ya cerrados con más de `UniSave__RetencionHistorialDias` días (90 por
+omisión). Los viajes en curso nunca se descartan. Los incidentes de zonas de riesgo se
+conservan 30 días.
+
+## Pruebas automatizadas
+
+```powershell
+dotnet test UniSave.Pruebas
+```
+
+Cubren la validación de correos, que retirar el consentimiento detenga la publicación, el
+umbral de tres personas de las zonas, la retención, que el aviso de cambios solo llegue a las
+cuentas afectadas y el bloqueo de inicio de sesión.
+
 ## Reporte a autoridades
 
 Con `UniSave__ReceptorAutoridades` apuntando a una dirección http(s), cada alerta envía un

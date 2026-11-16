@@ -61,16 +61,20 @@ namespace UniSave.Api
         private const double Celda = 0.0015;
 
         private static readonly TimeSpan Vigencia = TimeSpan.FromSeconds(30);
-        private static readonly TimeSpan Retencion = TimeSpan.FromDays(30);
+        private static readonly TimeSpan RetencionIncidentes = TimeSpan.FromDays(30);
         private readonly object _acceso = new();
         private readonly Dictionary<string, (Guid Sesion, Aviso Aviso)> _avisos = [];
         private readonly string _archivo;
         private readonly int _minimoPersonas;
+        private readonly TimeSpan _retencionHistorial;
         private Registro _registro;
 
-        /// <summary>Se produce cuando cambia un vínculo, una actividad o una notificación.</summary>
+        /// <summary>
+        /// Se produce cuando cambia un vínculo, una actividad, una notificación o una zona.
+        /// Recibe los correos afectados; nulo significa todos (las zonas son comunes).
+        /// </summary>
         /// <remarks>Los suscriptores no deben bloquear: solo programan su actualización.</remarks>
-        public event Action? Cambio;
+        public event Action<IReadOnlyCollection<string>?>? Cambio;
 
         public Seguimiento(IConfiguration configuracion, IWebHostEnvironment entorno)
         {
@@ -80,11 +84,13 @@ namespace UniSave.Api
             _archivo = Path.GetFullPath(configuracion["UniSave:ArchivoSeguimiento"] ??
                 Path.Combine(Path.GetDirectoryName(cuentas)!, "seguimiento.json"),
                 entorno.ContentRootPath);
-            _registro = File.Exists(_archivo)
+            _minimoPersonas = Math.Max(1, configuracion.GetValue("UniSave:MinimoPersonasZona", 3));
+            _retencionHistorial = TimeSpan.FromDays(
+                Math.Max(1, configuracion.GetValue("UniSave:RetencionHistorialDias", 90)));
+            _registro = Depurar(File.Exists(_archivo)
                 ? JsonSerializer.Deserialize<Registro>(File.ReadAllText(_archivo))
                     ?? throw new InvalidDataException("No se pudo leer el registro de seguimiento.")
-                : new Registro([], [], []);
-            _minimoPersonas = Math.Max(1, configuracion.GetValue("UniSave:MinimoPersonasZona", 3));
+                : new Registro([], [], []));
         }
 
         /// <summary>Devuelve la versión de la autorización vigente para compartir.</summary>
@@ -102,8 +108,10 @@ namespace UniSave.Api
         /// <exception cref="IOException">No se pudo guardar la decisión.</exception>
         public void EstablecerConsentimiento(string correo, bool permitir)
         {
+            string[] afectados;
             lock (_acceso)
             {
+                afectados = Relacionados(correo);
                 if ((BuscarConsentimiento(correo) is not null) == permitir)
                 {
                     return;
@@ -128,7 +136,7 @@ namespace UniSave.Api
                 }
             }
 
-            AvisarCambio();
+            AvisarCambio(afectados);
         }
 
         /// <summary>Consulta los vínculos de la cuenta indicada.</summary>
@@ -157,8 +165,10 @@ namespace UniSave.Api
                     Notificaciones = [.. _registro.Notificaciones,
                         Nueva(Guid.NewGuid(), familiar, estudiante, TipoNotificacion.Invitacion)]
                 });
-                return true;
             }
+
+            AvisarCambio([estudiante, familiar]);
+            return true;
         }
 
         public void Responder(string familiar, string estudiante, bool aceptar)
@@ -188,6 +198,8 @@ namespace UniSave.Api
                         : avisos
                 });
             }
+
+            AvisarCambio([estudiante, familiar]);
         }
 
         public void Desvincular(string correo, Invitacion invitacion)
@@ -220,6 +232,8 @@ namespace UniSave.Api
                         aviso.Contacto == actual.Familiar)).ToArray()
                 });
             }
+
+            AvisarCambio([invitacion.Estudiante, invitacion.Familiar]);
         }
 
         /// <summary>Actualiza la posición en memoria y registra eventos por destinatario.</summary>
@@ -230,6 +244,7 @@ namespace UniSave.Api
         /// <exception cref="IOException">No se pudo guardar el evento por destinatario.</exception>
         public bool Publicar(Guid sesion, Guid versionConsentimiento, Aviso aviso)
         {
+            string[]? afectados;
             lock (_acceso)
             {
                 if (BuscarConsentimiento(aviso.Estudiante)?.Version != versionConsentimiento)
@@ -290,15 +305,18 @@ namespace UniSave.Api
                 }
 
                 _avisos[aviso.Estudiante] = (sesion, aviso);
+                // Un incidente nuevo puede cambiar las zonas que ven todos.
+                afectados = incidente ? null : Relacionados(aviso.Estudiante);
             }
 
-            AvisarCambio();
+            AvisarCambio(afectados);
             return true;
         }
 
         /// <summary>Cierra el historial del viaje compartido sin guardar sus posiciones.</summary>
         public void CerrarTrayecto(string estudiante, Guid id, bool confirmarLlegada)
         {
+            string[] afectados;
             lock (_acceso)
             {
                 var abiertos = _registro.Trayectos.Where(trayecto =>
@@ -321,21 +339,27 @@ namespace UniSave.Api
                             Nueva(id, trayecto.Familiar, estudiante, TipoNotificacion.Llegada))]
                         : _registro.Notificaciones
                 });
+                afectados = Relacionados(estudiante);
             }
+
+            AvisarCambio(afectados);
         }
 
         public void Detener(string correo, Guid sesion)
         {
-            bool detenido;
+            string[]? afectados = null;
             lock (_acceso)
             {
-                detenido = _avisos.TryGetValue(correo, out var actual) && actual.Sesion == sesion &&
-                    _avisos.Remove(correo);
+                if (_avisos.TryGetValue(correo, out var actual) && actual.Sesion == sesion &&
+                    _avisos.Remove(correo))
+                {
+                    afectados = Relacionados(correo);
+                }
             }
 
-            if (detenido)
+            if (afectados is not null)
             {
-                AvisarCambio();
+                AvisarCambio(afectados);
             }
         }
 
@@ -391,6 +415,8 @@ namespace UniSave.Api
                     });
                 }
             }
+
+            AvisarCambio([correo]);
         }
 
         /// <summary>Registra el inicio de un viaje en el historial propio del estudiante.</summary>
@@ -401,6 +427,8 @@ namespace UniSave.Api
             {
                 Guardar(_registro with { Viajes = [.. _registro.Viajes ?? [], viaje] });
             }
+
+            AvisarCambio([viaje.Estudiante]);
         }
 
         /// <summary>Cierra el viaje propio; la llegada solo se confirma con «Ya llegué».</summary>
@@ -423,6 +451,8 @@ namespace UniSave.Api
                         ? viaje with { Fin = fin, LlegadaConfirmada = llegada } : viaje).ToArray()
                 });
             }
+
+            AvisarCambio([estudiante]);
         }
 
         public IReadOnlyList<Viaje> ConsultarViajes(string estudiante)
@@ -461,8 +491,10 @@ namespace UniSave.Api
                 {
                     Incidentes = Agregar(Guid.NewGuid(), cuenta, categoria, posicion)
                 });
-                return true;
             }
+
+            AvisarCambio(null);
+            return true;
         }
 
         /// <summary>Agrupa los incidentes recientes por celda.</summary>
@@ -487,13 +519,32 @@ namespace UniSave.Api
         private static double Ajustar(double grados) =>
             Math.Round((Math.Floor(grados / Celda) + 0.5) * Celda, 6);
 
-        // Agrega un incidente y descarta los que superan el periodo de retención.
-        private Incidente[] Agregar(Guid origen, string cuenta, string categoria, Posicion posicion)
+        private Incidente[] Agregar(Guid origen, string cuenta, string categoria, Posicion posicion) =>
+            [.. _registro.Incidentes ?? [], new Incidente(origen, cuenta, categoria,
+                Ajustar(posicion.Latitud), Ajustar(posicion.Longitud), DateTimeOffset.UtcNow)];
+
+        // El estudiante y todas las cuentas con las que tiene un vínculo o una invitación.
+        private string[] Relacionados(string estudiante) =>
+            [estudiante, .. _registro.Invitaciones.Where(vinculo => vinculo.Estudiante == estudiante)
+                .Select(vinculo => vinculo.Familiar)];
+
+        // Descarta lo cerrado que superó su retención, para que el archivo no crezca sin fin.
+        // Lo abierto se conserva: un viaje en curso nunca desaparece del historial.
+        private Registro Depurar(Registro registro)
         {
             DateTimeOffset ahora = DateTimeOffset.UtcNow;
-            return [.. (_registro.Incidentes ?? []).Where(actual => ahora - actual.Fecha < Retencion),
-                new Incidente(origen, cuenta, categoria, Ajustar(posicion.Latitud),
-                    Ajustar(posicion.Longitud), ahora)];
+            DateTimeOffset limite = ahora - _retencionHistorial;
+            return registro with
+            {
+                Notificaciones = registro.Notificaciones.Where(aviso => aviso.Fecha >= limite)
+                    .ToArray(),
+                Trayectos = registro.Trayectos.Where(trayecto => trayecto.Fin is not { } fin ||
+                    fin >= limite).ToArray(),
+                Viajes = registro.Viajes?.Where(viaje => viaje.Fin is not { } fin || fin >= limite)
+                    .ToArray(),
+                Incidentes = registro.Incidentes?.Where(incidente =>
+                    ahora - incidente.Fecha < RetencionIncidentes).ToArray()
+            };
         }
 
         private Invitacion? BuscarInvitacion(string estudiante, string familiar) =>
@@ -509,15 +560,15 @@ namespace UniSave.Api
 
         private void Guardar(Registro registro)
         {
+            registro = Depurar(registro);
             Directory.CreateDirectory(Path.GetDirectoryName(_archivo)!);
             string temporal = _archivo + ".tmp";
             File.WriteAllText(temporal, JsonSerializer.Serialize(registro));
             File.Move(temporal, _archivo, true);
             _registro = registro;
-            AvisarCambio();
         }
 
-        // Los portales abiertos se actualizan al instante en lugar de esperar su consulta periódica.
-        private void AvisarCambio() => Cambio?.Invoke();
+        // Se llama fuera del bloqueo: los portales afectados se redibujan al instante.
+        private void AvisarCambio(IReadOnlyCollection<string>? afectados) => Cambio?.Invoke(afectados);
     }
 }
