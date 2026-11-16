@@ -150,6 +150,8 @@ else
             <h2>Compartir ubicación</h2>
             <p>Si aceptas, los familiares vinculados podrán ver tu ubicación durante un
                 trayecto o una alerta activos mientras mantengas abierta esta pantalla.</p>
+            <p>UniSave es un apoyo complementario: no reemplaza a la policía ni a los
+                servicios de emergencia. En peligro inmediato llama al 911.</p>
             <p class="estado">@(Consiente ? "Consentimiento activo" : "Consentimiento desactivado")</p>
             <button type="button" @onclick="CambiarConsentimiento">
                 @(Consiente ? "Retirar consentimiento" : "Acepto compartir durante mi actividad")

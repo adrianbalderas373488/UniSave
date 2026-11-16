@@ -270,6 +270,7 @@ namespace UniSave.Movil.Components.Pages
             _estado = new(null, null, null, []);
             _ubicacion = null;
             _destino = "";
+            _crear = false;
             LimpiarContacto();
             _mensaje = "Sesión cerrada.";
         }

@@ -62,7 +62,29 @@ namespace UniSave.Api.Components
 
         protected override void OnInitialized()
         {
+            Seguimiento.Cambio += AlCambiarSeguimiento;
             _actualizaciones = ActualizarAsync(_vida.Token);
+        }
+
+        // Programa el redibujado sin esperar: el aviso puede llegar desde otra sesión.
+        private void AlCambiarSeguimiento()
+        {
+            if (!_vida.IsCancellationRequested)
+            {
+                _ = RedibujarAsync();
+            }
+        }
+
+        private async Task RedibujarAsync()
+        {
+            try
+            {
+                await InvokeAsync(StateHasChanged);
+            }
+            catch (ObjectDisposedException)
+            {
+                // La vista se cerró mientras llegaba el aviso.
+            }
         }
 
         private async Task AccederAsync()
@@ -425,10 +447,12 @@ namespace UniSave.Api.Components
             _destinoActivo = null;
             _destino = "";
             _familiar = "";
+            _crear = false;
         }
 
         public async ValueTask DisposeAsync()
         {
+            Seguimiento.Cambio -= AlCambiarSeguimiento;
             Salir();
             await _vida.CancelAsync();
             if (_actualizaciones is not null)

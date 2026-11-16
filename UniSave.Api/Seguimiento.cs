@@ -46,6 +46,10 @@ namespace UniSave.Api
         private readonly string _archivo;
         private Registro _registro;
 
+        /// <summary>Se produce cuando cambia un vínculo, una actividad o una notificación.</summary>
+        /// <remarks>Los suscriptores no deben bloquear: solo programan su actualización.</remarks>
+        public event Action? Cambio;
+
         public Seguimiento(IConfiguration configuracion, IWebHostEnvironment entorno)
         {
             string cuentas = Path.GetFullPath(
@@ -100,6 +104,8 @@ namespace UniSave.Api
                     _avisos.Remove(correo);
                 }
             }
+
+            AvisarCambio();
         }
 
         /// <summary>Consulta los vínculos de la cuenta indicada.</summary>
@@ -253,8 +259,10 @@ namespace UniSave.Api
                 }
 
                 _avisos[aviso.Estudiante] = (sesion, aviso);
-                return true;
             }
+
+            AvisarCambio();
+            return true;
         }
 
         /// <summary>Cierra el historial del viaje compartido sin guardar sus posiciones.</summary>
@@ -287,12 +295,16 @@ namespace UniSave.Api
 
         public void Detener(string correo, Guid sesion)
         {
+            bool detenido;
             lock (_acceso)
             {
-                if (_avisos.TryGetValue(correo, out var actual) && actual.Sesion == sesion)
-                {
+                detenido = _avisos.TryGetValue(correo, out var actual) && actual.Sesion == sesion &&
                     _avisos.Remove(correo);
-                }
+            }
+
+            if (detenido)
+            {
+                AvisarCambio();
             }
         }
 
@@ -368,6 +380,10 @@ namespace UniSave.Api
             File.WriteAllText(temporal, JsonSerializer.Serialize(registro));
             File.Move(temporal, _archivo, true);
             _registro = registro;
+            AvisarCambio();
         }
+
+        // Los portales abiertos se actualizan al instante en lugar de esperar su consulta periódica.
+        private void AvisarCambio() => Cambio?.Invoke();
     }
 }
