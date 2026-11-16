@@ -47,6 +47,12 @@ namespace UniSave.Movil
                 throw new InvalidOperationException("El correo o la contraseña son incorrectos.");
             }
 
+            if (acceso.StatusCode == HttpStatusCode.TooManyRequests)
+            {
+                throw new InvalidOperationException(
+                    "Demasiados intentos fallidos. Espera 15 minutos.");
+            }
+
             acceso.EnsureSuccessStatusCode();
             var sesion = await acceso.Content.ReadFromJsonAsync<Sesion>();
             return sesion?.AccessToken is { Length: > 0 } token

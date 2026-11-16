@@ -6,7 +6,6 @@
 // Fecha: 2026-11-09
 // Trazabilidad: CU-01 a CU-07
 
-using System.Collections.Concurrent;
 using System.Globalization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
@@ -43,12 +42,6 @@ namespace UniSave.Api.Components
         private int _dias = 7;
         private string _categoria = Seguimiento.Categorias[0];
         private string? _mapaDibujado;
-
-        // shortcut: intentos en memoria de un solo servidor; con varios servidores deben compartirse.
-        private static readonly ConcurrentDictionary<string, (int Fallos, DateTimeOffset Desde)>
-            Intentos = new();
-        private static readonly TimeSpan Bloqueo = TimeSpan.FromMinutes(15);
-        private const int MaximoFallos = 5;
 
         [Inject] private RepositorioCuentas Cuentas { get; set; } = null!;
         [Inject] private PasswordHasher<Cuenta> Cifrador { get; set; } = null!;
@@ -137,26 +130,16 @@ namespace UniSave.Api.Components
                 }
                 else
                 {
-                    if (Intentos.TryGetValue(correo, out var previo) &&
-                        previo.Fallos >= MaximoFallos &&
-                        DateTimeOffset.UtcNow - previo.Desde < Bloqueo)
+                    var (resultado, cuenta) = await Cuentas.VerificarAsync(correo, _clave,
+                        _vida.Token);
+                    if (cuenta is null)
                     {
-                        _mensaje = "Demasiados intentos fallidos. Espera 15 minutos.";
+                        _mensaje = resultado == ResultadoAcceso.Bloqueado
+                            ? "Demasiados intentos fallidos. Espera 15 minutos."
+                            : "El correo o la contraseña son incorrectos.";
                         return;
                     }
 
-                    var cuenta = await Cuentas.BuscarAsync(correo, _vida.Token);
-                    if (cuenta is null || Cifrador.VerifyHashedPassword(cuenta, cuenta.Resumen,
-                        _clave) == PasswordVerificationResult.Failed)
-                    {
-                        Intentos.AddOrUpdate(correo, _ => (1, DateTimeOffset.UtcNow),
-                            (_, actual) => DateTimeOffset.UtcNow - actual.Desde < Bloqueo
-                                ? (actual.Fallos + 1, actual.Desde) : (1, DateTimeOffset.UtcNow));
-                        _mensaje = "El correo o la contraseña son incorrectos.";
-                        return;
-                    }
-
-                    Intentos.TryRemove(correo, out _);
                     _cuenta = cuenta;
                 }
 

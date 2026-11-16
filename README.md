@@ -62,8 +62,11 @@ indica que el canal no está configurado.
 
 ## Inicio de sesión
 
-Tras 5 contraseñas incorrectas para un mismo correo, el portal bloquea ese correo durante
-15 minutos. El conteo vive en la memoria del servidor.
+Tras 5 contraseñas incorrectas para un mismo correo registrado, UniSave bloquea ese correo
+durante 15 minutos, tanto en el portal como en la API (`/cuentas/sesion` responde 429). El
+conteo vive en la memoria del servidor. Además, la API admite 20 peticiones de cuentas por
+minuto **por dirección IP**; detrás de un proxy hay que configurar ForwardedHeaders para que
+el servidor vea la IP real.
 
 ## Android y Safari
 

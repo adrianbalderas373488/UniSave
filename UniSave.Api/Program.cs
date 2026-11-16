@@ -7,6 +7,7 @@
 // Trazabilidad: CU-01, CU-03
 
 using System.Security.Claims;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
@@ -26,12 +27,16 @@ constructor.Services.AddRazorComponents().AddInteractiveServerComponents();
 constructor.Services.AddRateLimiter(opciones =>
 {
     opciones.RejectionStatusCode = 429;
-    opciones.AddFixedWindowLimiter("cuentas", limite =>
-    {
-        limite.PermitLimit = 20;
-        limite.Window = TimeSpan.FromMinutes(1);
-        limite.QueueLimit = 0;
-    });
+    // Un contador por dirección IP: una persona no agota el límite de todas las demás.
+    // Detrás de un proxy, configurar ForwardedHeaders para ver la IP real.
+    opciones.AddPolicy("cuentas", contexto => RateLimitPartition.GetFixedWindowLimiter(
+        contexto.Connection.RemoteIpAddress?.ToString() ?? "desconocida",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 20,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        }));
 });
 var aplicacion = constructor.Build();
 aplicacion.UseRateLimiter();
@@ -62,7 +67,7 @@ cuentas.MapPost("/registro", async (Registro entrada, RepositorioCuentas reposit
         : Results.Conflict();
 });
 cuentas.MapPost("/sesion", async (Registro entrada, RepositorioCuentas repositorio,
-    PasswordHasher<Cuenta> cifrador, CancellationToken cancelacion) =>
+    CancellationToken cancelacion) =>
 {
     string? correo = Correo.Normalizar(entrada.Correo ?? "");
     if (correo is null || entrada.Contrasena is null || entrada.Contrasena.Length > 128)
@@ -70,11 +75,13 @@ cuentas.MapPost("/sesion", async (Registro entrada, RepositorioCuentas repositor
         return Results.Unauthorized();
     }
 
-    var cuenta = await repositorio.BuscarAsync(correo, cancelacion);
-    if (cuenta is null || cifrador.VerifyHashedPassword(cuenta, cuenta.Resumen,
-        entrada.Contrasena) == PasswordVerificationResult.Failed)
+    var (resultado, cuenta) = await repositorio.VerificarAsync(correo, entrada.Contrasena,
+        cancelacion);
+    if (cuenta is null)
     {
-        return Results.Unauthorized();
+        return resultado == ResultadoAcceso.Bloqueado
+            ? Results.StatusCode(StatusCodes.Status429TooManyRequests)
+            : Results.Unauthorized();
     }
 
     var identidad = new ClaimsIdentity(
