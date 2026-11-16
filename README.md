@@ -39,6 +39,32 @@ Puede configurarse otra ruta con `UniSave__ArchivoSeguimiento`. El historial gua
 resumen del viaje. Las coordenadas quedan en memoria y dejan de estar disponibles al
 retirar el consentimiento o vencer la actualización.
 
+## Mapa en vivo, zonas de riesgo y viajes
+
+- **Mapa en vivo.** El portal dibuja el mapa con Leaflet 1.9.4 (CDN de cdnjs) y mosaicos de
+  OpenStreetMap, por lo que necesita Internet. El familiar ve el marcador del estudiante
+  moverse con cada publicación (cada 5 s) y en rojo durante una alerta.
+- **Zonas de riesgo.** En Mapa, el estudiante puede reportar su zona actual (acoso, robo o
+  asalto, poca iluminación u otro). Las alertas SOS con ubicación también cuentan. Solo se
+  guarda la celda aproximada de unos 150 m, nunca la posición exacta; los incidentes se
+  descartan a los 30 días. Un círculo rojo aparece cuando la celda tiene incidentes de al
+  menos `UniSave__MinimoPersonasZona` personas distintas (3 por omisión). Se puede filtrar
+  por el último día, 7 o 30 días.
+- **Mis viajes.** El estudiante ve su propio historial, aunque no comparta el viaje.
+
+## Reporte a autoridades
+
+Con `UniSave__ReceptorAutoridades` apuntando a una dirección http(s), cada alerta envía un
+POST JSON con el tipo, la alerta, el estudiante, la posición (solo con consentimiento) y la
+fecha. La pantalla muestra el resultado real del envío. **Usa solo un receptor de prueba
+acordado con el cliente; nunca un servicio de emergencias real.** Sin configurar, la pantalla
+indica que el canal no está configurado.
+
+## Inicio de sesión
+
+Tras 5 contraseñas incorrectas para un mismo correo, el portal bloquea ese correo durante
+15 minutos. El conteo vive en la memoria del servidor.
+
 ## Android y Safari
 
 Para abrir el portal desde un teléfono, usa una dirección HTTPS que el teléfono pueda
@@ -66,7 +92,9 @@ entre cuentas se demuestran en el portal web. La prueba nativa de iOS requiere M
 
 ## Alcance pendiente
 
-- Integración con autoridades, pendiente según el alcance acordado.
+- Receptor real de autoridades: requiere acuerdo con el cliente y la institución.
+- Mapa, zonas de riesgo y «Mis viajes» en la aplicación móvil (hoy solo en el portal).
+- Validar con el cliente RF-06 (zonas de riesgo) y RF-07 (historial del estudiante).
 - Verificación de correo y notificaciones push.
 - Configuración del acceso HTTPS desde teléfonos y pruebas físicas de permisos, GPS y SMS.
 - Prueba con Safari en un iPhone. La verificación en el navegador de desarrollo se realiza

@@ -6,6 +6,7 @@
 // Fecha: 2026-11-09
 // Trazabilidad: CU-01 a CU-07
 
+using System.Collections.Concurrent;
 using System.Globalization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
@@ -37,11 +38,28 @@ namespace UniSave.Api.Components
         private Guid? _alertaId;
         private DateTimeOffset? _inicioTrayecto;
         private int _generacion;
+        private Posicion? _ultimaPosicion;
+        private string _estadoAutoridades = "";
+        private int _dias = 7;
+        private string _categoria = Seguimiento.Categorias[0];
+        private string? _mapaDibujado;
+
+        // shortcut: intentos en memoria de un solo servidor; con varios servidores deben compartirse.
+        private static readonly ConcurrentDictionary<string, (int Fallos, DateTimeOffset Desde)>
+            Intentos = new();
+        private static readonly TimeSpan Bloqueo = TimeSpan.FromMinutes(15);
+        private const int MaximoFallos = 5;
 
         [Inject] private RepositorioCuentas Cuentas { get; set; } = null!;
         [Inject] private PasswordHasher<Cuenta> Cifrador { get; set; } = null!;
         [Inject] private Seguimiento Seguimiento { get; set; } = null!;
+        [Inject] private ReceptorAutoridades Autoridades { get; set; } = null!;
         [Inject] private IJSRuntime Navegador { get; set; } = null!;
+
+        private IReadOnlyList<Viaje> Viajes => _cuenta is null ? [] :
+            Seguimiento.ConsultarViajes(_cuenta.Correo);
+
+        private IReadOnlyList<Zona> Zonas => Seguimiento.ConsultarZonas(_dias);
 
         private IReadOnlyList<Invitacion> Invitaciones => _cuenta is null ? [] :
             Seguimiento.ConsultarInvitaciones(_cuenta.Correo);
@@ -119,14 +137,26 @@ namespace UniSave.Api.Components
                 }
                 else
                 {
+                    if (Intentos.TryGetValue(correo, out var previo) &&
+                        previo.Fallos >= MaximoFallos &&
+                        DateTimeOffset.UtcNow - previo.Desde < Bloqueo)
+                    {
+                        _mensaje = "Demasiados intentos fallidos. Espera 15 minutos.";
+                        return;
+                    }
+
                     var cuenta = await Cuentas.BuscarAsync(correo, _vida.Token);
                     if (cuenta is null || Cifrador.VerifyHashedPassword(cuenta, cuenta.Resumen,
                         _clave) == PasswordVerificationResult.Failed)
                     {
+                        Intentos.AddOrUpdate(correo, _ => (1, DateTimeOffset.UtcNow),
+                            (_, actual) => DateTimeOffset.UtcNow - actual.Desde < Bloqueo
+                                ? (actual.Fallos + 1, actual.Desde) : (1, DateTimeOffset.UtcNow));
                         _mensaje = "El correo o la contraseña son incorrectos.";
                         return;
                     }
 
+                    Intentos.TryRemove(correo, out _);
                     _cuenta = cuenta;
                 }
 
@@ -211,7 +241,7 @@ namespace UniSave.Api.Components
 
         private async Task IniciarTrayectoAsync()
         {
-            if (_trayecto || _cuenta is not { EsEstudiante: true })
+            if (_trayecto || _cuenta is not { EsEstudiante: true } cuenta)
             {
                 return;
             }
@@ -220,7 +250,9 @@ namespace UniSave.Api.Components
             _trayectoId = Guid.NewGuid();
             _inicioTrayecto = DateTimeOffset.UtcNow;
             _destinoActivo = _destino.Trim();
-            _mensaje = "Trayecto iniciado.";
+            GuardarCambio(() => Seguimiento.IniciarViaje(new Viaje(_trayectoId.Value, cuenta.Correo,
+                _destinoActivo.Length > 0 ? _destinoActivo : null, _inicioTrayecto.Value, null,
+                false)), "Trayecto iniciado.");
             await PublicarAsync(true);
         }
 
@@ -230,6 +262,7 @@ namespace UniSave.Api.Components
             _destinoActivo = null;
             ActualizarContexto("Trayecto finalizado.");
             CerrarHistorial(Consiente);
+            CerrarViaje(true);
             _trayectoId = null;
             _inicioTrayecto = null;
         }
@@ -238,7 +271,103 @@ namespace UniSave.Api.Components
         {
             _alerta = false;
             _alertaId = null;
+            _estadoAutoridades = "";
             ActualizarContexto("Alerta finalizada.");
+        }
+
+        private void CerrarViaje(bool llegada)
+        {
+            if (_cuenta is { } cuenta && _trayectoId is { } id)
+            {
+                GuardarCambio(() => Seguimiento.CerrarViaje(cuenta.Correo, id, llegada), _mensaje);
+            }
+        }
+
+        // La posición solo viaja si hay consentimiento; sin él, el reporte sale sin ubicación.
+        private async Task ReportarAutoridadesAsync()
+        {
+            if (_cuenta is not { } cuenta || _alertaId is not { } alerta)
+            {
+                return;
+            }
+
+            var resultado = await Autoridades.EnviarAsync(alerta, cuenta.Correo,
+                Consiente ? _ultimaPosicion : null, _vida.Token);
+            _estadoAutoridades = resultado switch
+            {
+                ResultadoReporte.Recibido =>
+                    $"El receptor de autoridades recibió el reporte ({DateTime.Now:t})",
+                ResultadoReporte.Fallido =>
+                    "No se pudo entregar el reporte a autoridades. Si estás en peligro, llama al 911.",
+                _ => "El canal a autoridades no está configurado. Si estás en peligro, llama al 911."
+            };
+        }
+
+        private async Task ReportarZonaAsync()
+        {
+            if (_cuenta is not { EsEstudiante: true } cuenta)
+            {
+                return;
+            }
+
+            try
+            {
+                var posicion = await Navegador.InvokeAsync<Posicion?>("unisave.posicion",
+                    _vida.Token, true);
+                _mensaje = posicion is null
+                    ? "No se pudo obtener tu ubicación. Revisa el permiso del navegador."
+                    : Seguimiento.ReportarZona(cuenta.Correo, _categoria, posicion)
+                        ? "Gracias. Registramos la zona aproximada, no tu ubicación exacta."
+                        : "Ya reportaste esta zona en las últimas 24 horas.";
+            }
+            catch (Exception error) when (error is JSException or IOException or ArgumentException)
+            {
+                _mensaje = "No se pudo registrar el reporte.";
+            }
+        }
+
+        // Dibuja el mapa de la vista abierta; solo llama al navegador cuando cambian los datos.
+        protected override async Task OnAfterRenderAsync(bool primeraVez)
+        {
+            string? mapa = _cuenta switch
+            {
+                { EsEstudiante: true } when _vista == "Mapa" => "mapa-estudiante",
+                { EsEstudiante: false } when _vista == "Inicio" => "mapa-familiar",
+                _ => null
+            };
+            if (mapa is null)
+            {
+                _mapaDibujado = null;
+                return;
+            }
+
+            var datos = new
+            {
+                Marcadores = Avisos.Where(aviso => aviso.Posicion is not null).Select(aviso => new
+                {
+                    aviso.Posicion!.Latitud,
+                    aviso.Posicion.Longitud,
+                    aviso.Alerta,
+                    Texto = aviso.Estudiante + (aviso.Alerta ? " · ALERTA SOS" : "")
+                }),
+                Zonas
+            };
+            string firma = mapa + System.Text.Json.JsonSerializer.Serialize(datos);
+            if (firma == _mapaDibujado)
+            {
+                return;
+            }
+
+            _mapaDibujado = firma;
+            try
+            {
+                await Navegador.InvokeVoidAsync("unisave.dibujarMapa", _vida.Token, mapa, datos);
+            }
+            catch (Exception error) when (error is JSException or JSDisconnectedException or
+                OperationCanceledException)
+            {
+                // Sin mapa la vista sigue mostrando la lista y el enlace externo.
+            }
         }
 
         private void ActualizarContexto(string mensaje)
@@ -284,6 +413,7 @@ namespace UniSave.Api.Components
                 _alertaId = Guid.NewGuid();
                 _mensaje = "Alerta activa.";
                 await PublicarAsync(true);
+                await ReportarAutoridadesAsync();
             }
             catch (OperationCanceledException) when (pulsacion.IsCancellationRequested)
             {
@@ -327,6 +457,7 @@ namespace UniSave.Api.Components
                     Posicion = posicion,
                     Actualizado = DateTimeOffset.UtcNow
                 });
+                _ultimaPosicion = posicion ?? _ultimaPosicion;
                 if (solicitarPermiso && publicado)
                 {
                     _mensaje = posicion is null ? "Actividad compartida sin ubicación." :
@@ -438,6 +569,9 @@ namespace UniSave.Api.Components
             CancelarPulsacion();
             ActualizarContexto("Sesión cerrada.");
             CerrarHistorial(false);
+            CerrarViaje(false);
+            _ultimaPosicion = null;
+            _estadoAutoridades = "";
             _cuenta = null;
             _alerta = false;
             _alertaId = null;

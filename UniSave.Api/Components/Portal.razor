@@ -107,18 +107,71 @@ else
                 <button type="button" @onclick="FinalizarAlerta">Finalizar alerta</button>
             }
         </section>
-        <p class="nota">El envío a autoridades está pendiente.</p>
+        <p class="nota" role="status">@(_estadoAutoridades.Length > 0 ? _estadoAutoridades
+            : Autoridades.Configurado ? "Al activar SOS se envía un reporte al receptor de autoridades."
+            : "El canal a autoridades no está configurado. En peligro inmediato llama al 911.")</p>
     </div>
     <div class="vista" hidden="@(_vista != "Mapa")">
-        <section class="tarjeta mapa">
+        <section class="tarjeta">
             <p class="sobrelinea">Ubicación</p>
-            <h2>Mi posición</h2>
-            <p>Consulta tu posición actual en este dispositivo.</p>
+            <h2>Mi posición y zonas de riesgo</h2>
+            <div id="mapa-estudiante" class="lienzo-mapa" role="img"
+                aria-label="Mapa con tu posición y las zonas de riesgo"></div>
             <button type="button" onclick="unisave.mostrarPosicion()">Consultar mi posición</button>
             <p id="posicion-local" role="status"></p>
             <a id="mapa-local" target="_blank" rel="noopener noreferrer" hidden>
                 Abrir posición en el mapa
             </a>
+            <label for="dias">Zonas reportadas en</label>
+            <select id="dias" @bind="_dias">
+                <option value="1">el último día</option>
+                <option value="7">los últimos 7 días</option>
+                <option value="30">los últimos 30 días</option>
+            </select>
+            <p class="detalle">Los círculos rojos marcan zonas con alertas o reportes de al menos
+                tres personas. Zonas activas: @Zonas.Count.</p>
+        </section>
+        <section>
+            <h2>Reportar una zona insegura</h2>
+            <p class="detalle">Se guarda la zona aproximada (unos 150 m), no tu ubicación exacta.</p>
+            <label for="categoria">Qué ocurrió</label>
+            <select id="categoria" @bind="_categoria">
+                @foreach (var categoria in Seguimiento.Categorias)
+                {
+                    <option value="@categoria">@categoria</option>
+                }
+            </select>
+            <button type="button" @onclick="ReportarZonaAsync">Reportar mi zona actual</button>
+        </section>
+    </div>
+    <div class="vista" hidden="@(_vista != "Viajes")">
+        <section>
+            <p class="sobrelinea">Tu actividad</p>
+            <h2>Mis viajes</h2>
+            @if (Viajes.Count == 0)
+            {
+                <p>Aquí verás los viajes que inicies, aunque no los compartas.</p>
+            }
+            @foreach (var viaje in Viajes)
+            {
+                <article class="registro" @key="viaje.Id">
+                    <p class="estado">@(viaje.Fin is null ? "En curso"
+                        : viaje.LlegadaConfirmada ? "Llegada confirmada" : "Sin confirmar llegada")</p>
+                    <h3>@(viaje.Destino ?? "Destino sin especificar")</h3>
+                    <dl class="fechas">
+                        <dt>Inicio</dt>
+                        <dd>@viaje.Inicio.ToLocalTime().ToString("g")</dd>
+                        @if (viaje.Fin is { } fin)
+                        {
+                            <dt>@(viaje.LlegadaConfirmada ? "Llegada" : "Fin")</dt>
+                            <dd>@fin.ToLocalTime().ToString("g")</dd>
+                        }
+                    </dl>
+                </article>
+            }
+            <button type="button" @onclick='() => _vista = "Mapa"'>
+                Ver zonas de riesgo de los últimos días
+            </button>
         </section>
     </div>
     <div class="vista" hidden="@(_vista != "Contactos")">
@@ -165,6 +218,10 @@ else
         <section aria-live="polite">
             <p class="sobrelinea">Seguimiento familiar</p>
             <h2>Actividad compartida</h2>
+            <div id="mapa-familiar" class="lienzo-mapa" role="img"
+                aria-label="Mapa en vivo de tus contactos y las zonas de riesgo"></div>
+            <p class="detalle">El mapa se actualiza en vivo. Círculos rojos: zonas de riesgo de
+                los últimos 7 días.</p>
             @if (Avisos.Count == 0)
             {
                 <p>No hay actividad compartida en este momento.</p>
@@ -309,6 +366,13 @@ else
                 <path d="M20 10c0 6-8 11-8 11S4 16 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/>
             </svg>
             <span>Mapa</span>
+        </button>
+        <button type="button" aria-current="@(_vista == "Viajes" ? "page" : null)"
+            @onclick='() => _vista = "Viajes"'>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>
+            </svg>
+            <span>Viajes</span>
         </button>
         }
         else

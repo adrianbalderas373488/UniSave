@@ -20,6 +20,8 @@ constructor.Services.AddAuthorization();
 constructor.Services.AddSingleton<RepositorioCuentas>();
 constructor.Services.AddSingleton<PasswordHasher<Cuenta>>();
 constructor.Services.AddSingleton<Seguimiento>();
+constructor.Services.AddHttpClient<ReceptorAutoridades>(cliente =>
+    cliente.Timeout = TimeSpan.FromSeconds(5));
 constructor.Services.AddRazorComponents().AddInteractiveServerComponents();
 constructor.Services.AddRateLimiter(opciones =>
 {

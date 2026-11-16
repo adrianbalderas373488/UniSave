@@ -2,9 +2,9 @@
 // Autor: Adrian Balderas y Fernanda Itzel
 // Materia: Verificación y Validación del Software
 // Módulo: Seguimiento
-// Descripción: Gestiona vínculos, consentimiento e historial.
-// Fecha: 2026-11-09
-// Trazabilidad: CU-02, CU-04, CU-06, CU-07
+// Descripción: Gestiona vínculos, consentimiento, historial y zonas de riesgo.
+// Fecha: 2026-11-15
+// Trazabilidad: CU-02, CU-04, CU-06, CU-07, RF-06 y RF-07 (propuestos)
 
 using System.Text.Json;
 
@@ -33,17 +33,39 @@ namespace UniSave.Api
     public sealed record Notificacion(Guid Origen, string Destinatario, string Contacto,
         TipoNotificacion Tipo, DateTimeOffset Fecha, bool Leida);
 
+    /// <summary>Viaje del estudiante, guardado aunque no se comparta con nadie.</summary>
+    public sealed record Viaje(Guid Id, string Estudiante, string? Destino,
+        DateTimeOffset Inicio, DateTimeOffset? Fin, bool LlegadaConfirmada);
+
+    /// <summary>Alerta o reporte guardado solo con la celda aproximada, nunca con la posición exacta.</summary>
+    public sealed record Incidente(Guid Origen, string Cuenta, string Categoria,
+        double Latitud, double Longitud, DateTimeOffset Fecha);
+
+    /// <summary>Celda con incidentes de varias personas; es lo único que ven los usuarios.</summary>
+    public sealed record Zona(double Latitud, double Longitud, int Incidentes, DateTimeOffset Ultimo);
+
     public sealed class Seguimiento
     {
         private sealed record Consentimiento(string Correo, Guid Version);
 
         private sealed record Registro(Invitacion[] Invitaciones, TrayectoCompartido[] Trayectos,
-            Notificacion[] Notificaciones, Consentimiento[]? Consentimientos = null);
+            Notificacion[] Notificaciones, Consentimiento[]? Consentimientos = null,
+            Viaje[]? Viajes = null, Incidente[]? Incidentes = null);
+
+        public static readonly string[] Categorias =
+            ["Acoso", "Robo o asalto", "Poca iluminación", "Otro"];
+
+        public const string CategoriaAlerta = "Alerta SOS";
+
+        // Unos 150 m de latitud: suficiente para ubicar una calle sin señalar una casa.
+        private const double Celda = 0.0015;
 
         private static readonly TimeSpan Vigencia = TimeSpan.FromSeconds(30);
+        private static readonly TimeSpan Retencion = TimeSpan.FromDays(30);
         private readonly object _acceso = new();
         private readonly Dictionary<string, (Guid Sesion, Aviso Aviso)> _avisos = [];
         private readonly string _archivo;
+        private readonly int _minimoPersonas;
         private Registro _registro;
 
         /// <summary>Se produce cuando cambia un vínculo, una actividad o una notificación.</summary>
@@ -62,6 +84,7 @@ namespace UniSave.Api
                 ? JsonSerializer.Deserialize<Registro>(File.ReadAllText(_archivo))
                     ?? throw new InvalidDataException("No se pudo leer el registro de seguimiento.")
                 : new Registro([], [], []);
+            _minimoPersonas = Math.Max(1, configuracion.GetValue("UniSave:MinimoPersonasZona", 3));
         }
 
         /// <summary>Devuelve la versión de la autorización vigente para compartir.</summary>
@@ -246,7 +269,11 @@ namespace UniSave.Api
                     }
                 }
 
-                if (trayectos.Count > 0 || notificaciones.Count > 0 || reanudados.Count > 0)
+                // La primera posición de cada alerta alimenta el mapa de zonas de riesgo.
+                bool incidente = aviso.AlertaId is { } idAlerta && aviso.Posicion is not null &&
+                    !(_registro.Incidentes ?? []).Any(actual => actual.Origen == idAlerta);
+                if (trayectos.Count > 0 || notificaciones.Count > 0 || reanudados.Count > 0 ||
+                    incidente)
                 {
                     var anteriores = _registro.Trayectos.Select(trayecto =>
                         reanudados.Contains((trayecto.Id, trayecto.Familiar))
@@ -254,7 +281,11 @@ namespace UniSave.Api
                     Guardar(_registro with
                     {
                         Trayectos = [.. anteriores, .. trayectos],
-                        Notificaciones = [.. _registro.Notificaciones, .. notificaciones]
+                        Notificaciones = [.. _registro.Notificaciones, .. notificaciones],
+                        Incidentes = incidente
+                            ? Agregar(aviso.AlertaId!.Value, aviso.Estudiante, CategoriaAlerta,
+                                aviso.Posicion!)
+                            : _registro.Incidentes
                     });
                 }
 
@@ -360,6 +391,109 @@ namespace UniSave.Api
                     });
                 }
             }
+        }
+
+        /// <summary>Registra el inicio de un viaje en el historial propio del estudiante.</summary>
+        /// <exception cref="IOException">No se pudo guardar el viaje.</exception>
+        public void IniciarViaje(Viaje viaje)
+        {
+            lock (_acceso)
+            {
+                Guardar(_registro with { Viajes = [.. _registro.Viajes ?? [], viaje] });
+            }
+        }
+
+        /// <summary>Cierra el viaje propio; la llegada solo se confirma con «Ya llegué».</summary>
+        /// <exception cref="IOException">No se pudo guardar el cierre.</exception>
+        public void CerrarViaje(string estudiante, Guid id, bool llegada)
+        {
+            lock (_acceso)
+            {
+                var viajes = _registro.Viajes ?? [];
+                if (!viajes.Any(viaje => viaje.Id == id && viaje.Estudiante == estudiante &&
+                    viaje.Fin is null))
+                {
+                    return;
+                }
+
+                DateTimeOffset fin = DateTimeOffset.UtcNow;
+                Guardar(_registro with
+                {
+                    Viajes = viajes.Select(viaje => viaje.Id == id && viaje.Estudiante == estudiante
+                        ? viaje with { Fin = fin, LlegadaConfirmada = llegada } : viaje).ToArray()
+                });
+            }
+        }
+
+        public IReadOnlyList<Viaje> ConsultarViajes(string estudiante)
+        {
+            lock (_acceso)
+            {
+                return (_registro.Viajes ?? []).Where(viaje => viaje.Estudiante == estudiante)
+                    .OrderByDescending(viaje => viaje.Inicio).ToArray();
+            }
+        }
+
+        /// <summary>Guarda el reporte de una zona insegura con su celda aproximada.</summary>
+        /// <returns>Falso si la cuenta ya reportó esa celda en las últimas 24 horas.</returns>
+        /// <exception cref="ArgumentException">La categoría no está en la lista permitida.</exception>
+        /// <exception cref="IOException">No se pudo guardar el reporte.</exception>
+        public bool ReportarZona(string cuenta, string categoria, Posicion posicion)
+        {
+            if (!Categorias.Contains(categoria))
+            {
+                throw new ArgumentException("Categoría no válida.", nameof(categoria));
+            }
+
+            lock (_acceso)
+            {
+                (double latitud, double longitud) = (Ajustar(posicion.Latitud),
+                    Ajustar(posicion.Longitud));
+                DateTimeOffset limite = DateTimeOffset.UtcNow.AddDays(-1);
+                if ((_registro.Incidentes ?? []).Any(actual => actual.Cuenta == cuenta &&
+                    actual.Latitud == latitud && actual.Longitud == longitud &&
+                    actual.Fecha > limite))
+                {
+                    return false;
+                }
+
+                Guardar(_registro with
+                {
+                    Incidentes = Agregar(Guid.NewGuid(), cuenta, categoria, posicion)
+                });
+                return true;
+            }
+        }
+
+        /// <summary>Agrupa los incidentes recientes por celda.</summary>
+        /// <param name="dias">Días hacia atrás que se consideran.</param>
+        /// <returns>Solo las celdas con incidentes de al menos el mínimo de personas.</returns>
+        public IReadOnlyList<Zona> ConsultarZonas(int dias)
+        {
+            DateTimeOffset desde = DateTimeOffset.UtcNow.AddDays(-Math.Clamp(dias, 1, 30));
+            lock (_acceso)
+            {
+                return (_registro.Incidentes ?? []).Where(incidente => incidente.Fecha >= desde)
+                    .GroupBy(incidente => (incidente.Latitud, incidente.Longitud))
+                    .Where(celda => celda.Select(incidente => incidente.Cuenta).Distinct().Count()
+                        >= _minimoPersonas)
+                    .Select(celda => new Zona(celda.Key.Latitud, celda.Key.Longitud,
+                        celda.Count(), celda.Max(incidente => incidente.Fecha)))
+                    .OrderByDescending(zona => zona.Incidentes).ToArray();
+            }
+        }
+
+        // Centro de la celda: todos los incidentes de la misma calle caen en el mismo punto.
+        private static double Ajustar(double grados) =>
+            Math.Round((Math.Floor(grados / Celda) + 0.5) * Celda, 6);
+
+        // Agrega un incidente y descarta los que superan el periodo de retención.
+        private Incidente[] Agregar(Guid origen, string cuenta, string categoria, Posicion posicion)
+        {
+            DateTimeOffset ahora = DateTimeOffset.UtcNow;
+            return [.. (_registro.Incidentes ?? []).Where(actual => ahora - actual.Fecha < Retencion),
+                new Incidente(origen, cuenta, categoria, Ajustar(posicion.Latitud),
+                    Ajustar(posicion.Longitud), ahora)];
         }
 
         private Invitacion? BuscarInvitacion(string estudiante, string familiar) =>

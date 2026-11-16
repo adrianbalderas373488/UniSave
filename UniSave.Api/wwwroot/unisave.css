@@ -114,8 +114,8 @@ section, .acceso {
     margin-bottom: .45rem;
 }
 label { display: block; margin: .75rem 0 .35rem; color: var(--secundario); }
-input, button { min-height: 48px; font: inherit; border-radius: .8rem; padding: .65rem .85rem; }
-input {
+input, select, button { min-height: 48px; font: inherit; border-radius: .8rem; padding: .65rem .85rem; }
+input, select {
     width: 100%;
     color: var(--texto);
     background: var(--campo);
@@ -229,5 +229,12 @@ a { color: var(--acento); }
     color: var(--acento);
     background: #193932;
     border-color: #477d73;
+}
+.lienzo-mapa {
+    height: 18rem;
+    margin-bottom: .8rem;
+    border: 1px solid var(--borde);
+    border-radius: .8rem;
+    background: var(--campo);
 }
 #blazor-error-ui { display: none; padding: 1rem; color: #fff; background: #542732; }
