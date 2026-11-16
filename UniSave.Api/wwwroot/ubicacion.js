@@ -81,8 +81,10 @@ window.unisave = {
             }).bindTooltip(marcador.texto).addTo(actual.capa);
             return [marcador.latitud, marcador.longitud];
         });
-        // Se centra una vez; después la persona puede moverse por el mapa sin que salte.
-        if (puntos.length > 0 && !actual.centrado) {
+        // Solo recentra si algún marcador salió de la vista: la persona puede explorar el mapa
+        // sin que salte, pero nunca pierde de vista al estudiante.
+        if (puntos.length > 0 &&
+            (!actual.centrado || !actual.mapa.getBounds().contains(L.latLngBounds(puntos)))) {
             actual.mapa.fitBounds(puntos, { maxZoom: 16, padding: [30, 30] });
             actual.centrado = true;
         }
