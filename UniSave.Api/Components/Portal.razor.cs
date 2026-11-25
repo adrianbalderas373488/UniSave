@@ -394,6 +394,8 @@ namespace UniSave.Api.Components
                 await Task.Delay(TimeSpan.FromSeconds(EstadoLocal.DuracionPulsacionSegundos),
                     pulsacion.Token);
                 pulsacion.Token.ThrowIfCancellationRequested();
+                // La pulsación terminó: esperar el reporte a autoridades no debe bloquear la siguiente alerta.
+                _pulsacion = null;
                 _alerta = true;
                 _alertaId = Guid.NewGuid();
                 _mensaje = "Alerta activa.";
@@ -406,7 +408,10 @@ namespace UniSave.Api.Components
             }
             finally
             {
-                _pulsacion = null;
+                if (_pulsacion == pulsacion)
+                {
+                    _pulsacion = null;
+                }
             }
         }
 
